@@ -31,7 +31,7 @@ export const links: Route.LinksFunction = () => [
 export function Layout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const logout = () => {
-    fetch(`http://localhost:3000/api/logout`, {
+    fetch(`/api/logout`, {
       method: "POST",
       credentials: "include",
     }).then((res) => {
@@ -45,7 +45,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <HelmetProvider>
       <Meta />
-      {/* <Links /> */}
+      <Links />
       <Helmet>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
