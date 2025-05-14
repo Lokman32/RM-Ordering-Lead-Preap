@@ -61,7 +61,7 @@ useEffect(() => {
     }
 
     try {
-      const res = await fetch(`/api/test-apn?value=${encodeURIComponent(value)}`, { credentials: 'include' });
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/test-apn?value=${encodeURIComponent(value)}`, { credentials: 'include' });
       const data = await res.json();
       if (!data.exists) return;
 
@@ -89,7 +89,7 @@ useEffect(() => {
     if (rows.length === 0) { alert("Pas de produit à commander"); return }
     const payload = rows.map(({ dpn, quantity }) => ({ dpn, qte: quantity }));
     try {
-      const res = await fetch("/api/commandes", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/commandes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ command_by:command_by, payload }),

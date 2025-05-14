@@ -11,7 +11,7 @@ export default function Confirm() {
   // 1) Move initial fetch into a function
   const fetchOrders = async () => {
     try {
-      const response = await fetch("/api/confirmDelivry", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/confirmDelivry`, {
         credentials: "include",
       });
       const result = await response.json();
@@ -44,7 +44,7 @@ export default function Confirm() {
       return alert("Tous les champs doit être scannés.");
     }
 
-    fetch("/api/validate-products", {
+    fetch(`${import.meta.env.VITE_API_URL}/api/validate-products`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

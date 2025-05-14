@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "3013:3013"
+    environment:
+      - VITE_API_URL=http://10.236.148.80:3014
+    depends_on:
+      - backend
+
+  backend:
+    build: ./backend
+    ports:
+      - "3014:3014"
+    environment:
+      - PORT=3014
+      - MONGO_URI=mongodb://mongo:27017/rm-ordering
+      - JWT_SECRET=secret
+      - JWT_EXPIRES=8h
+      - CLIENT_URL=http://10.236.148.80:3013
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

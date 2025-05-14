@@ -19,7 +19,7 @@ export default function Confirm() {
   // Fetch only the lines for a given serial_cmd
   const fetchOrders = async (serial) => {
     try {
-      const response = await fetch(`/api/commande/${serial}/lines`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/commande/${serial}/lines`, {
         credentials: 'include'
       });
       const result = await response.json();
@@ -71,7 +71,7 @@ export default function Confirm() {
       return alert("Tous les champs doivent être scannés.");
     }
 
-    fetch("/api/deliver-products", {
+    fetch(`${import.meta.env.VITE_API_URL}/api/deliver-products`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: 'include',

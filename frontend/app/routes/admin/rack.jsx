@@ -12,7 +12,7 @@ export default function RackManager() {
   }, []);
 
   const fetchProducts = async () => {
-    const res = await fetch('/api/tubes');
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/tubes`);
     const data = await res.json();
     setProducts(data.data);
   };
@@ -37,7 +37,7 @@ export default function RackManager() {
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    const res = await fetch('/api/products/search', {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/products/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ inpt: search }),
@@ -47,13 +47,13 @@ export default function RackManager() {
   };
 
   const handleDelete = async (id) => {
-    await fetch(`/api/products/${id}`, { method: 'DELETE' });
+    await fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`, { method: 'DELETE' });
     fetchProducts();
   };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    await fetch(`/api/rack`, {
+    await fetch(`${import.meta.env.VITE_API_URL}/api/rack`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editProduct),

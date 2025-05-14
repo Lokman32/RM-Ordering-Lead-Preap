@@ -16,7 +16,7 @@ export default function retard() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch('/api/retardOrders',{credentials: 'include'});
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/retardOrders`,{credentials: 'include'});
         const result = await response.json();
 
         if (result) {

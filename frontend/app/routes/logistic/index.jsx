@@ -11,7 +11,7 @@ export default function index() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch('/api/logistic', { credentials: 'include' });
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/logistic`, { credentials: 'include' });
         const result = await response.json();
 
         if (result) {
@@ -241,7 +241,7 @@ function editDescription(tubeId, commandeId, currentDescription) {
   const newDescription = prompt("Edit the description:", currentDescription);
   if (newDescription === null || newDescription === currentDescription) return;
 
-  fetch(`/api/description/${tubeId}/${commandeId}`, {
+  fetch(`${import.meta.env.VITE_API_URL}/api/description/${tubeId}/${commandeId}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",

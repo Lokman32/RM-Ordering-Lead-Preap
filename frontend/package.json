@@ -5,7 +5,7 @@
   "scripts": {
     "build": "react-router build",
     "dev": "react-router dev",
-    "start": "react-router-serve ./build/server/index.js",
+    "start": "npx serve -s build/client -l 3013",
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
@@ -29,10 +29,11 @@
   "devDependencies": {
     "@react-router/dev": "^7.5.3",
     "@tailwindcss/vite": "^4.1.4",
-    "@types/node": "^20",
+    "@types/node": "^20.17.46",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@types/react-helmet": "^6.1.11",
+    "dotenv": "^16.5.0",
     "tailwindcss": "^4.1.4",
     "typescript": "^5.8.3",
     "vite": "^6.3.3",

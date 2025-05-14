@@ -27,7 +27,7 @@ export default function HistoryDashboard() {
   // 2) Fetch summary when date changes
   useEffect(() => {
     if (!selectedDate) return;
-    fetch(`/api/history?selected_date=${selectedDate}`, { credentials: 'include' })
+    fetch(`${import.meta.env.VITE_API_URL}/api/history?selected_date=${selectedDate}`, { credentials: 'include' })
       .then(r => r.json())
       .then(data => setChartData(data || []))
       .catch(console.error);
@@ -35,7 +35,7 @@ export default function HistoryDashboard() {
 
   // 3) Fetch detail table for a shift
   const fetchDetails = useCallback((date, shift) => {
-    fetch(`/api/history/details?date=${date}&shift=${shift}`, { credentials: 'include' })
+    fetch(`${import.meta.env.VITE_API_URL}/api/history/details?date=${date}&shift=${shift}`, { credentials: 'include' })
       .then(r => r.json())
       .then(json => setDetails(json.data || []))
       .catch(console.error);
