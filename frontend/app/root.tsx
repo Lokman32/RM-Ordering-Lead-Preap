@@ -15,6 +15,16 @@ import { HelmetProvider, Helmet } from "react-helmet-async";
 import { useState } from "react";
 // const { HelmetProvider } = pkg;
 
+export function HydrateFallback() {
+  return (
+    <div className="flex items-center justify-center h-screen bg-gradient-to-br from-orange-100 to-gray-200">
+      <div className="animate-pulse text-6xl sm:text-9xl font-extrabold text-gray-600 drop-shadow-lg">
+        Loading<span className="animate-bounce inline-block">...</span>
+      </div>
+    </div>
+  );
+}
+
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
@@ -45,7 +55,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <HelmetProvider>
       <Meta />
-      <Links />
+      {/* <Links /> */}
       <Helmet>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -57,6 +67,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <link rel="icon" type="image/png" href="/favicon-32x32.png" />
       </Helmet>
       <div className="relative text-gray-800 min-h-screen flex flex-col">
+      <div style={{ backgroundImage: "url('/aptiv2.JPG')" }} className="absolute h-full w-full z-10 top-0"><div className="absolute h-full w-full z-50 bg-black/50 backdrop-blur-xs top-0"></div></div>
+      
         <div className="relative z-10 flex flex-col min-h-screen bg-white/10">
           <nav className="backdrop-blur-sm border-b shadow-md p-4 text-white bg-black">
             <div className="container mx-auto flex justify-between items-center">
@@ -103,6 +115,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </li>
                 <li>
                   <Link to="/logistic/index">Logistic</Link>
+                </li>
+                <li>
+                  <Link to="/admin/dashboard">Admin</Link>
                 </li>
                 <li
                   onClick={logout}

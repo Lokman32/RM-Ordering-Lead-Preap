@@ -3,8 +3,8 @@ import { Helmet } from "react-helmet-async";
 import TubePage from "../../layouts/tubePage";
 
 export default function Confirm() {
-  const [popupOpen, setPopupOpen] = useState(false);
-  const [serialCmd, setSerialCmd] = useState("");
+  // const [popupOpen, setPopupOpen] = useState(false);
+  // const [serialCmd, setSerialCmd] = useState("");
   const [currentAPN, setCurrentAPN] = useState("");
   const [orders, setOrders] = useState([]);
   const cmdRef = useRef(null);
@@ -16,10 +16,9 @@ export default function Confirm() {
     return diffHrs >= 2 ? "bg-red-700 text-white" : "";
   };
 
-  // Fetch only the lines for a given serial_cmd
-  const fetchOrders = async (serial) => {
+  const fetchOrders = async () => {
     try {
-      const response = await fetch(`/api/commande/${serial}/lines`, {
+      const response = await fetch(`/api/deliverOrder`, {
         credentials: 'include'
       });
       const result = await response.json();
@@ -31,22 +30,23 @@ export default function Confirm() {
   };
 
   useEffect(() => {
-    if (popupOpen) cmdRef.current?.focus();
-  }, [popupOpen]);
+    fetchOrders()
+    apnRef.current?.focus();
+  }, []);
 
-  const openPopup = () => setPopupOpen(true);
-  const closePopup = () => setPopupOpen(false);
+  // const openPopup = () => setPopupOpen(true);
+  // const closePopup = () => setPopupOpen(false);
 
-  const handleCmdKey = (e) => {
-    if (e.code === "Enter") {
-      e.preventDefault();
-      const serial = e.target.value.trim();
-      setSerialCmd(serial);
-      setPopupOpen(false);
-      fetchOrders(serial);
-      apnRef.current?.focus();
-    }
-  };
+  // const handleCmdKey = (e) => {
+  //   if (e.code === "Enter") {
+  //     e.preventDefault();
+  //     const serial = e.target.value.trim();
+  //     setSerialCmd(serial);
+  //     setPopupOpen(false);
+  //     fetchOrders(serial);
+  //     apnRef.current?.focus();
+  //   }
+  // };
 
   const handleAPNKey = (e) => {
     if (e.code === "Enter") {
@@ -67,15 +67,12 @@ export default function Confirm() {
     const serial_number = e.target.value.trim();
     const apn = apnRef.current.value.trim().toUpperCase().replace(/^1P/, "");
 
-    if (!serialCmd || !apn || !serial_number) {
-      return alert("Tous les champs doivent être scannés.");
-    }
 
-    fetch("/api/deliver-products", {
+    fetch(`/api/deliver-products`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: 'include',
-      body: JSON.stringify({ serial_cmd: serialCmd, apn, serial_number }),
+      body: JSON.stringify({ apn, serial_number }),
     })
       .then((r) => r.json())
       .then((data) => {
@@ -83,13 +80,9 @@ export default function Confirm() {
         apnRef.current.value = "";
         apnRef.current.focus();
         if (data.success) {
-          alert("Produit livré !");
-          fetchOrders(serialCmd);
-        } else {
-          alert(data.message || "Erreur lors de la livraison");
+          fetchOrders();
         }
       })
-      .catch(() => alert("Erreur de connexion"));
   };
 
   return (
@@ -103,15 +96,15 @@ export default function Confirm() {
 
         <div className="my-4 flex justify-between">
           <h1 className="text-xl font-semibold">Order list</h1>
-          <button
+          {/* <button
             onClick={openPopup}
             className="bg-blue-500 px-4 py-2 rounded text-white font-semibold"
           >
             Scan Order
-          </button>
+          </button> */}
         </div>
 
-        {popupOpen && (
+        {/* {popupOpen && (
           <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50">
             <div className="bg-white p-6 rounded shadow-lg">
               <h2 className="text-lg font-semibold mb-4">Scanner la Commande</h2>
@@ -132,7 +125,7 @@ export default function Confirm() {
               </div>
             </div>
           </div>
-        )}
+        )} */}
 
         <div className="flex flex-col items-center">
           <input
@@ -140,7 +133,6 @@ export default function Confirm() {
             type="text"
             placeholder="APN"
             onKeyDown={handleAPNKey}
-            disabled={!serialCmd}
             className="w-full border max-w-3xl py-3 my-2 px-6 text-center text-2xl rounded bg-white/30"
           />
           <input
@@ -148,7 +140,6 @@ export default function Confirm() {
             type="text"
             placeholder="Serial produit"
             onKeyDown={handleSerialKey}
-            disabled={!serialCmd}
             className="w-full border max-w-3xl py-3 my-2 px-6 text-center text-2xl rounded bg-white/30"
           />
         </div>

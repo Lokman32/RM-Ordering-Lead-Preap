@@ -56,7 +56,6 @@ useEffect(() => {
     if (!value) return;
 
     if (rows.some((r) => r.dpn === value)) {
-      alert("This APN has already been scanned.");
       return;
     }
 
@@ -86,10 +85,10 @@ useEffect(() => {
   };
 
   const handleOrder = async () => {
-    if (rows.length === 0) { alert("Pas de produit à commander"); return }
+    if (rows.length === 0) { return }
     const payload = rows.map(({ dpn, quantity }) => ({ dpn, qte: quantity }));
     try {
-      const res = await fetch("/api/commandes", {
+      const res = await fetch(`/api/commandes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ command_by:command_by, payload }),

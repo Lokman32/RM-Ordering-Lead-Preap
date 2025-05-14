@@ -4,14 +4,14 @@ import { useNavigate } from 'react-router';
 export default function Login() {
   const [matricule, setMatricule] = useState('');
   const [error, setError] = useState('');
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     try {
-      const response = await fetch('/api/login', {
+      const response = await fetch(`/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ matricule }),
@@ -26,7 +26,7 @@ const navigate = useNavigate();
       // Store JWT and user data
       localStorage.setItem('token', data.token);
       localStorage.setItem('matricule', JSON.stringify(data.data.matricule));
-      
+
       // Redirect to dashboard
       navigate('/tube/index');
     } catch (err) {
@@ -36,8 +36,11 @@ const navigate = useNavigate();
 
   return (
     <div className="relative min-h-screen flex items-center justify-center">
-      <div className="absolute inset-0 bg-cover bg-center -z-10" ></div> 
-      {/* style={{ backgroundImage: "url('/aptiv1.jpg')" }} */}
+      <div className="absolute inset-0 bg-cover bg-center -z-10" ></div>
+
+      <div className="absolute pt-5 top-8 left-0 w-full flex justify-center">
+        <h1 className="text-6xl pt-10 tracking-widest font-bold text-white uppercase drop-shadow-lg">RM Ordering of lead preap area</h1>
+      </div>
 
       <div className="bg-white/80 backdrop-blur-md p-8 rounded-lg shadow-2xl w-full max-w-md">
         <h2 className="text-2xl font-bold text-center text-gray-700">Log In</h2>
