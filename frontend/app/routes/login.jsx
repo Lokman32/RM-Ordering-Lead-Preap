@@ -55,7 +55,7 @@ export default function Login() {
           <div>
             <label htmlFor="matricule" className="block mb-2 text-sm font-medium text-gray-700">Matricule</label>
             <input
-              type="text"
+              type="password"
               id="matricule"
               name="matricule"
               required

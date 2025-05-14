@@ -67,7 +67,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <link rel="icon" type="image/png" href="/favicon-32x32.png" />
       </Helmet>
       <div className="relative text-gray-800 min-h-screen flex flex-col">
-      <div style={{ backgroundImage: "url('/aptiv2.JPG')" }} className="absolute h-full w-full z-10 top-0"><div className="absolute h-full w-full z-50 bg-black/50 backdrop-blur-xs top-0"></div></div>
+      <div style={{ backgroundImage: "url('/aptiv2.JPG')",backgroundSize:'cover' }} className="absolute h-full w-full z-10 top-0"><div className="absolute h-full w-full z-50 bg-black/50 backdrop-blur-xs top-0"></div></div>
       
         <div className="relative z-10 flex flex-col min-h-screen bg-white/10">
           <nav className="backdrop-blur-sm border-b shadow-md p-4 text-white bg-black">
