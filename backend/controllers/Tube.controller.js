@@ -52,60 +52,52 @@ module.exports = {
   }),
 
   ordersPended: asyncHandler(async (req, res) => {
-    const eightHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const results = await db
       .collection("commandes")
       .aggregate([
-        {
-          $match: {
-            createdAt: { $gte: eightHoursAgo },
-            "ligne_commande.status": { $nin: ["confirmed", "livred"] },
-          },
+      { $unwind: "$ligne_commande" },
+      {
+        $match: {
+        "ligne_commande.status": { $nin: ["confirmed", "livred"] },
         },
-        { $unwind: "$ligne_commande" },
-        {
-          $match: {
-            "ligne_commande.status": { $nin: ["confirmed", "livred"] },
-          },
+      },
+      {
+        $lookup: {
+        from: "tubes",
+        localField: "ligne_commande.apn",
+        foreignField: "dpn",
+        as: "tube_info",
         },
-        {
-          $lookup: {
-            from: "tubes",
-            localField: "ligne_commande.apn",
-            foreignField: "dpn",
-            as: "tube_info",
-          },
-        },
-        { $unwind: "$tube_info" },
-        {
-          $project: {
-            barcode: "$serial_cmd",
-            apn: "$ligne_commande.apn",
-            command_by: "$user_id",
-            created_at: "$createdAt",
-            apn: "$tube_info.dpn",
-            quantityCmd: "$ligne_commande.quantite",
-            quantityLiv: {
-              $size: {
-                $filter: {
-                  input: "$ligne_commande.serial_ids",
-                  as: "item",
-                  cond: {
-                    $or: [
-                      { $eq: ["$$item.status", "livred"] },
-                      { $eq: ["$$item.status", "Confirmed"] },
-                    ],
-                  },
-                },
-              },
+      },
+      { $unwind: "$tube_info" },
+      {
+        $project: {
+        barcode: "$serial_cmd",
+        apn: "$tube_info.dpn",
+        command_by: "$user_id",
+        created_at: "$createdAt",
+        quantityCmd: "$ligne_commande.quantite",
+        quantityLiv: {
+          $size: {
+          $filter: {
+            input: "$ligne_commande.serial_ids",
+            as: "item",
+            cond: {
+            $or: [
+              { $eq: ["$$item.status", "livred"] },
+              { $eq: ["$$item.status", "Confirmed"] },
+            ],
             },
-            statut: "$ligne_commande.status",
-            rack: "$tube_info.rack",
-            description: "$ligne_commande.description",
+          },
           },
         },
-        { $sort: { description: -1, created_at: 1 } },
+        statut: "$ligne_commande.status",
+        rack: "$tube_info.rack",
+        description: "$ligne_commande.description",
+        },
+      },
+      { $sort: { description: -1, created_at: 1 } },
       ])
       .toArray();
 

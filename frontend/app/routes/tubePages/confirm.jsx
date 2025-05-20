@@ -31,7 +31,7 @@ export default function Confirm() {
     if (e.code === "Enter") {
       e.preventDefault();
       const v = e.target.value.trim();
-      setCurrentAPN(v.startsWith("1P") ? v.slice(2) : v);
+      setCurrentAPN(v.toUpperCase().startsWith("1P") ? v.slice(2) : v);
       serialRef.current?.focus();
     }
   };
