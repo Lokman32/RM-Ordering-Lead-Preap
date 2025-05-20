@@ -65,7 +65,10 @@ export default function Confirm() {
     if (e.code !== "Enter") return;
     e.preventDefault();
     const serial_number = e.target.value.trim();
-    const apn = apnRef.current.value.trim().toUpperCase().replace(/^1P/, "");
+    let apn = apnRef.current.value.trim();
+    if (apn.toLowerCase().startsWith("1p")) {
+      apn = apn.slice(2);
+    }
 
 
     fetch(`/api/deliver-products`, {

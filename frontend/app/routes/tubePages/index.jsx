@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import TubePage from "../../layouts/tubePage";
 import { useNavigate } from "react-router";
-import {jwtDecode} from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 
 export default function index() {
   const inputRef = useRef(null);
@@ -11,28 +11,27 @@ export default function index() {
   const [keyCounter, setKeyCounter] = useState(0);
   const navigate = useNavigate();
 
-useEffect(() => {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    navigate('/login');
-    return;
-  }
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
 
-  const decoded = jwtDecode(token);
-  const currentTime = Date.now() / 1000;
+    const decoded = jwtDecode(token);
+    const currentTime = Date.now() / 1000;
 
-  if (decoded.exp < currentTime) {
-    // Token is expired
-    localStorage.removeItem('token');
-    navigate('/login');
-  } else {
-    setCmd(decoded.matricule);
-    console.log(decoded)
-  }
-}, [navigate, command_by]);
+    if (decoded.exp < currentTime) {
+      // Token is expired
+      localStorage.removeItem('token');
+      navigate('/login');
+    } else {
+      setCmd(decoded.matricule);
+      console.log(decoded)
+    }
+  }, [navigate, command_by]);
 
 
-  // autofocus input on load
   useEffect(() => {
     const focusInput = () => inputRef.current?.focus();
     focusInput();
@@ -91,7 +90,7 @@ useEffect(() => {
       const res = await fetch(`/api/commandes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ command_by:command_by, payload }),
+        body: JSON.stringify({ command_by: command_by, payload }),
         credentials: 'include'
       });
       const json = await res.json();
@@ -151,8 +150,8 @@ useEffect(() => {
                                 setQuantity(id, val);
                               }}
                               className={`px-4 py-1 text-xl rounded hover:bg-gray-300 ${selected
-                                  ? "border-2 border-indigo-500"
-                                  : "bg-gray-200"
+                                ? "border-2 border-indigo-500"
+                                : "bg-gray-200"
                                 }`}
                             >
                               {val}
