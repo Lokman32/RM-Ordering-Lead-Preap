@@ -17,7 +17,6 @@ export default function TubePage({ children }) {
     const currentTime = Date.now() / 1000;
 
     if (decoded.exp < currentTime) {
-      // Token is expired
       localStorage.removeItem('token');
       navigate('/login');
     } else {

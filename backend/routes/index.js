@@ -1,53 +1,47 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 const {
-  admin,
   tube,
   ordersPended,
   deliveredOrder,
-  loginPost,
-  testApn,
+  retarded,
   storeCommande,
+  deliverCommand,
+  validateCommands,
+  testApn,
+} = require("../controllers/Tube.controller");
+const {
+  logistic,
+  updateDescription,
+} = require("../controllers/Logistic.controller");
+const {
+  historyDetails,
+  historySummary,
   updateRack,
   searchRack,
-  validateProducts,
-  logout,
-  updateDescription,
-  deliverProduct,
-  retarded,
-  logistic,
-  commandeLines,
-  historySummary,
-  historyDetails
-} = require('../controllers/handlers');
-// const { authMiddleware } = require('../middleware/authMiddleware');
-// const { roleMiddleware } = require('../middleware/roleMiddleware');
+} = require("../controllers/Admin.controller");
+const { loginPost, logout } = require("../controllers/Auth.controller");
 
+// Routes
+router.post("/api/login", loginPost);
+router.get("/api/test-apn", testApn);
 
+router.get("/api/tubes", tube);
 
-router.post('/api/login', loginPost); //
-router.get('/api/test-apn', testApn); //
+router.get("/api/logistic", logistic);
+router.get("/api/deliverOrder", ordersPended);
+router.get("/api/confirmDelivry", deliveredOrder);
+router.get("/api/retardOrders", retarded);
 
+router.post("/api/commandes", storeCommande);
+router.put("/api/rack", updateRack);
+router.post("/api/search-rack", searchRack);
+router.post("/api/deliver-products", deliverCommand);
+router.post("/api/validate-products", validateCommands);
+router.post("/api/logout", logout);
+router.put("/api/description/:apn/:commande_id", updateDescription);
 
-
-router.get('/api/admin', admin); 
-router.get('/api/tubes', tube); //
-
-router.get('/api/logistic', logistic); //
-router.get('/api/deliverOrder', ordersPended); //
-router.get('/api/confirmDelivry', deliveredOrder); //
-router.get('/api/retardOrders', retarded); //
-
-router.post('/api/commandes', storeCommande); //
-router.put('/api/rack', updateRack); 
-router.post('/api/search-rack', searchRack); 
-router.post('/api/deliver-products', deliverProduct); //
-router.post('/api/validate-products', validateProducts); //
-router.post('/api/logout', logout); 
-router.put('/api/description/:apn/:commande_id', updateDescription); 
-router.get('/api/commande/:serial_cmd/lines', commandeLines);
-
-router.get('/api/history', historySummary);
-router.get('/api/history/details', historyDetails);
+router.get("/api/history", historySummary);
+router.get("/api/history/details", historyDetails);
 
 module.exports = router;

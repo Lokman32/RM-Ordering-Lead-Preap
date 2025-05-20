@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -7,6 +7,45 @@ import JsBarcode from "jsbarcode";
 
 export default function index() {
   const [orders, setOrders] = useState([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalValue, setModalValue] = useState("");
+  const [modalOrder, setModalOrder] = useState(null);
+
+  const openEditModal = (order) => {
+    setModalOrder(order);
+    setModalValue(order.description || "");
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setModalOrder(null);
+    setModalValue("");
+  };
+
+  const handleModalSave = async () => {
+    if (!modalOrder) return;
+    if (modalValue === modalOrder.description) {
+      closeModal();
+      return;
+    }
+    await fetch(`/api/description/${modalOrder.apn}/${modalOrder.barcode}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ description: modalValue }),
+      credentials: 'include'
+    });
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.apn === modalOrder.apn && order.barcode === modalOrder.barcode
+          ? { ...order, description: modalValue, date_feedback:new Date() }
+          : order
+      )
+    );
+    closeModal();
+  };
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -61,66 +100,60 @@ export default function index() {
     XLSX.writeFile(wb, "orders.xlsx");
   };
 
-const exportPdf = () => {
-  const doc = new jsPDF();
-  const table = tableRef.current;
+  const exportPdf = () => {
+    const doc = new jsPDF();
+    const table = tableRef.current;
 
-  // 1️⃣ Extract headers
-  const headers = Array.from(table.querySelectorAll("thead th"))
-    .map(th => th.textContent);
+    const headers = Array.from(table.querySelectorAll("thead th"))
+      .map(th => th.textContent);
 
-  // 2️⃣ Build two parallel arrays:
-  //    - `bodyText` with only primitive values for autoTable
-  //    - `barcodeImgs` containing base64 images for column 3
-  const bodyText = [];
-  const barcodeImgs = []; 
+    const bodyText = [];
+    const barcodeImgs = [];
 
-  Array.from(table.querySelectorAll("tbody tr")).forEach((row, rowIndex) => {
-    const cells = Array.from(row.querySelectorAll("td"));
-    const textRow = [];
-    let barcodeImg = null;
+    Array.from(table.querySelectorAll("tbody tr")).forEach((row, rowIndex) => {
+      const cells = Array.from(row.querySelectorAll("td"));
+      const textRow = [];
+      let barcodeImg = null;
 
-    cells.forEach((cell, colIndex) => {
-      const txt = cell.textContent;
-      if (colIndex === 3) {
-        // generate barcode image once
-        const canvas = document.createElement("canvas");
-        JsBarcode(canvas, txt, { format: "CODE128" });
-        barcodeImg = canvas.toDataURL("image/png");
-        textRow.push('');        // placeholder, will be replaced by image
-      } else {
-        textRow.push(txt);
-      }
+      cells.forEach((cell, colIndex) => {
+        const txt = cell.textContent;
+        if (colIndex === 3) {
+          // generate barcode image once
+          const canvas = document.createElement("canvas");
+          JsBarcode(canvas, txt, { format: "CODE128" });
+          barcodeImg = canvas.toDataURL("image/png");
+          textRow.push('');        // placeholder, will be replaced by image
+        } else {
+          textRow.push(txt);
+        }
+      });
+
+      bodyText.push(textRow);
+      barcodeImgs.push(barcodeImg);
     });
 
-    bodyText.push(textRow);
-    barcodeImgs.push(barcodeImg);
-  });
-
-  // 3️⃣ Draw table with didDrawCell callback
-  autoTable(doc, {
-    head: [headers],
-    body: bodyText,
-    didDrawCell: (data) => {
-      // Only body, only column 3 (zero-based)
-      if (data.section === 'body' && data.column.index === 3) {
-        const img = barcodeImgs[data.row.index];
-        if (img) {
-          doc.addImage(
-            img, 'PNG',
-            data.cell.x + 2,
-            data.cell.y + 2,
-            data.cell.width - 4,
-            data.cell.height - 4
-          );
+    autoTable(doc, {
+      head: [headers],
+      body: bodyText,
+      didDrawCell: (data) => {
+        // Only body, only column 3 (zero-based)
+        if (data.section === 'body' && data.column.index === 3) {
+          const img = barcodeImgs[data.row.index];
+          if (img) {
+            doc.addImage(
+              img, 'PNG',
+              data.cell.x + 2,
+              data.cell.y + 2,
+              data.cell.width - 4,
+              data.cell.height - 4
+            );
+          }
         }
-      }
-    },
-  });
+      },
+    });
 
-  doc.save("orders.pdf");
-};
-
+    doc.save("orders.pdf");
+  };
 
   const getDelayClass = (createdAt) => {
     const diffHrs = Math.floor(
@@ -173,7 +206,8 @@ const exportPdf = () => {
                   "Serial_Comd",
                   "Date_Cmd",
                   "Retard",
-                  "Description",
+                  "Feedback",
+                  "Date_Feedback",
                   "Rack",
                 ].map((h) => (
                   <th key={h} className="px-4 py-2 text-left">
@@ -196,13 +230,7 @@ const exportPdf = () => {
                     <tr
                       key={`${order.apn}-${order.barcode}-${key}`}
                       className={delayClass}
-                      onClick={() =>
-                        editDescription(
-                          order.apn,
-                          order.barcode,
-                          order.description
-                        )
-                      }
+                      onClick={() => openEditModal(order)}
                     >
                       <td className="px-4 py-2">{order.apn}</td>
                       <td className="px-4 py-2">{order.quantityCmd}</td>
@@ -215,6 +243,7 @@ const exportPdf = () => {
                         {delayHrs} h : {delayMins} min
                       </td>
                       <td className="px-4 py-2">{order.description}</td>
+                      <td className="px-4 py-2">{new Date(order.date_feedback).toLocaleString('fr-FR')}</td>
                       <td className="px-4 py-2">{order.rack}</td>
                     </tr>
                   );
@@ -233,6 +262,40 @@ const exportPdf = () => {
           </table>
         </div>
       </div>
+
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded shadow-lg p-6 min-w-[320px]">
+            <h2 className="text-lg font-semibold mb-4">Modifier la description</h2>
+            <input
+              type="text"
+              className="border px-3 py-2 w-full mb-4"
+              value={modalValue}
+              onChange={e => setModalValue(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  handleModalSave();
+                }
+              }}
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                className="bg-gray-300 px-4 py-2 rounded"
+                onClick={closeModal}
+              >
+                Annuler
+              </button>
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+                onClick={handleModalSave}
+              >
+                Enregistrer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
