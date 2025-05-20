@@ -18,7 +18,7 @@ export default function Confirm() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/commande/${serial}/lines`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/deliverOrder`, {
         credentials: 'include'
       });
       const result = await response.json();
