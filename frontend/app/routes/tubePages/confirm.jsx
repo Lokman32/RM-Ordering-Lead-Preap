@@ -30,8 +30,8 @@ export default function Confirm() {
   const handleAPNKey = (e) => {
     if (e.code === "Enter") {
       e.preventDefault();
-      const v = e.target.value.trim();
-      setCurrentAPN(v.toUpperCase().startsWith("1P") ? v.slice(2) : v);
+      const v = e.target.value.trim().toUpperCase();
+      setCurrentAPN(v.startsWith("1P") ? v.slice(2) : v);
       serialRef.current?.focus();
     }
   };
