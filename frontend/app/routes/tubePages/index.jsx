@@ -47,9 +47,9 @@ export default function index() {
     if (e.code !== "Enter") return;
     e.preventDefault();
 
-    let value = e.target.value.trim();
+    let value = e.target.value.trim().toUpperCase();
     e.target.value = "";
-    if (value.toLowerCase().startsWith("1p")) {
+    if (value.startsWith("1P")) {
       value = value.slice(2);
     }
     if (!value) return;

@@ -65,10 +65,7 @@ export default function Confirm() {
     if (e.code !== "Enter") return;
     e.preventDefault();
     const serial_number = e.target.value.trim();
-    let apn = apnRef.current.value.trim();
-    if (apn.toLowerCase().startsWith("1p")) {
-      apn = apn.slice(2);
-    }
+    let apn = currentAPN;
 
 
     fetch(`${import.meta.env.VITE_API_URL}/api/deliver-products`, {
