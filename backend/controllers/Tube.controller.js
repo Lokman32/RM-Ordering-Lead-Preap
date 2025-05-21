@@ -1,7 +1,7 @@
 const db = require("../config/db");
 const { asyncHandler } = require("../middleware/asyncHandler");
 const { generateSerial } = require("../utils/generators");
-
+const { ObjectId } = require("mongodb");
 
 module.exports = {
   tube: asyncHandler(async (req, res) => {
@@ -221,97 +221,125 @@ module.exports = {
     }
   }),
 
+
+
 deliverCommand: asyncHandler(async (req, res) => {
-    const { apn, serial_number } = req.body;
+  const { apn, serial_number } = req.body;
 
-    try {
-      // Find the first command with a matching apn line that is not livred or confirmed
-      const commande = await db.collection("commandes").findOne({
-        "ligne_commande.apn": apn,
-        "ligne_commande.status": { $nin: ["livred", "confirmed"] },
-      });
-      if (!commande) throw new Error("Command not found or all lines are already delivered/confirmed");
-
-      const lineIndex = commande.ligne_commande.findIndex((l) => l.apn === apn && !["livred", "confirmed"].includes(l.status));
-      if (lineIndex === -1) throw new Error("Tube not found in this command or line is already delivered/confirmed");
-
-      const line = commande.ligne_commande[lineIndex];
-      line.serial_ids = line.serial_ids || [];
-
-      const newQuantityLiv = line.serial_ids.length + 1;
-      if (newQuantityLiv > line.quantite) {
-        return res.status(400).json({
-          success: false,
-          message: `Cannot deliver more than ordered (${line.quantite})`,
-        });
-      }
-
-      // Check if the serial number is already used in any command
-      const dup = await db.collection("commandes").findOne({
-        "ligne_commande.serial_ids.serial": serial_number,
-      });
-      if (dup) throw new Error("This serial was delivered elsewhere");
-
-      // Check if the serial number is already in the current line
-      if (line.serial_ids.some((s) => s.serial === serial_number)) {
-        throw new Error("This serial already registered here");
-      }
-
-      const isLineFully = newQuantityLiv === line.quantite;
-      const newLineStatus = isLineFully ? "livred" : "partiellement_livred";
-
-      await db.collection("commandes").updateOne(
-        { _id: commande._id },
-        {
-          $push: {
-            [`ligne_commande.${lineIndex}.serial_ids`]: {
-              serial: serial_number,
-              status: "livred",
-              delivered_at: new Date(),
-            },
+  try {
+    // Find ONE command that has a ligne_commande with the matching APN and not delivered or confirmed
+    const [commande] = await db.collection("commandes").aggregate([
+      {
+        $project: {
+          ligne_commande: {
+            $filter: {
+              input: "$ligne_commande",
+              as: "lc",
+              cond: {
+                $and: [
+                  { $eq: ["$$lc.apn", apn] },
+                  { $not: { $in: ["$$lc.status", ["livred", "confirmed"]] } }
+                ]
+              }
+            }
           },
-          $set: {
-            [`ligne_commande.${lineIndex}.quantityLiv`]: newQuantityLiv,
-            [`ligne_commande.${lineIndex}.status`]: newLineStatus,
-            [`ligne_commande.${lineIndex}.estLiv`]: isLineFully,
-            [`ligne_commande.${lineIndex}.updated_at`]: new Date(),
-          },
+          _id: 1,
+          status: 1,
         }
-      );
+      },
+      {
+        $match: {
+          "ligne_commande.0": { $exists: true }
+        }
+      },
+      { $limit: 1 }
+    ]).toArray();
+    
+    
+    if (!commande) {
+      throw new Error("Command not found or all lines are already delivered/confirmed");
+    }
 
-      const updated = await db.collection("commandes").findOne({ _id: commande._id });
+    const line = commande.ligne_commande[0];
+    line.serial_ids = line.serial_ids || [];
+    const newQuantityLiv = line.serial_ids.length + 1;
 
-      const allLinesDelivered = updated.ligne_commande.every(
-        (l) => l.status === "livred"
-      );
-
-      if (allLinesDelivered && updated.status !== "livred") {
-        await db
-          .collection("commandes")
-          .updateOne(
-            { _id: commande._id },
-            { $set: { status: "livred", updatedAt: new Date() } }
-          );
-      }
-
-      res.json({
-        success: true,
-        message: "Command delivered successfully",
-        data: {
-          serial_number,
-          current_quantity: newQuantityLiv,
-          line_status: newLineStatus,
-          commande_fully_delivered: allLinesDelivered,
-        },
-      });
-    } catch (error) {
-      console.error("Delivery error:", error);
-      res.status(400).json({
+    if (newQuantityLiv > line.quantite) {
+      return res.status(400).json({
         success: false,
-        message: error.message || "Delivery failed",
+        message: `Cannot deliver more than ordered (${line.quantite})`,
       });
     }
-  }),
+
+    // Check if the serial number was already used elsewhere
+    const dup = await db.collection("commandes").findOne({
+      "ligne_commande.serial_ids.serial": serial_number,
+    });
+    if (dup) throw new Error("This serial was delivered elsewhere");
+
+    // Check if the serial is already in the line
+    if (line.serial_ids.some((s) => s.serial === serial_number)) {
+      throw new Error("This serial already registered here");
+    }
+
+    const newLineStatus = newQuantityLiv === line.quantite ? "livred" : "partiellement_livred";
+
+    // Update the line in the original document
+await db.collection("commandes").updateOne(
+      {
+        _id: new ObjectId(commande._id),
+        "ligne_commande.apn": apn,
+      },
+      {
+        $push: {
+          "ligne_commande.$.serial_ids": {
+            serial: serial_number,
+            status: "livred",
+            delivered_at: new Date(),
+          },
+        },
+        $set: {
+          "ligne_commande.$.quantityLiv": newQuantityLiv,
+          "ligne_commande.$.status": newLineStatus,
+          "ligne_commande.$.estLiv": newQuantityLiv === line.quantite,
+          "ligne_commande.$.updated_at": new Date(),
+        },
+      }
+    );
+
+    const updated = await db.collection("commandes").findOne({ _id: new ObjectId(commande._id) });
+
+    const allLinesDelivered = updated.ligne_commande.every(
+      (l) => l.status === "livred"
+    );
+
+    if (allLinesDelivered && updated.status !== "livred") {
+      await db.collection("commandes").updateOne(
+        { _id: new ObjectId(commande._id) },
+        { $set: { status: "livred", updatedAt: new Date() } }
+      );
+    }
+
+    res.json({
+      success: true,
+      message: "Command delivered successfully",
+      data: {
+        serial_number,
+        current_quantity: newQuantityLiv,
+        line_status: newLineStatus,
+        commande_fully_delivered: allLinesDelivered,
+      },
+    });
+
+  } catch (error) {
+    console.error("Delivery error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message || "Delivery failed",
+    });
+  }
+}),
+
 
   validateCommands: asyncHandler(async (req, res) => {
     const { apn, serial_number } = req.body;
