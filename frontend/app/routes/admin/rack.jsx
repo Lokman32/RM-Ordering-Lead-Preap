@@ -48,7 +48,7 @@ export default function RackManager() {
   };
 
   const handleDelete = async (id) => {
-    await fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`, { method: 'DELETE' });
+    if (confirm(`supprimer le produit ${id}`)) await fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`, { method: 'DELETE' });
     fetchProducts();
   };
 
@@ -105,7 +105,7 @@ export default function RackManager() {
                   <td className="px-4 py-3">
                     <button className="text-red-600 hover:underline" onClick={(e) => {
                       e.stopPropagation();
-                      handleDelete(product.id);
+                      handleDelete(product.dpn);
                     }}>Supprimer</button>
                   </td>
                 </tr>

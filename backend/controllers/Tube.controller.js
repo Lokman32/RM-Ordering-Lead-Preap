@@ -52,52 +52,53 @@ module.exports = {
   }),
 
   ordersPended: asyncHandler(async (req, res) => {
-
     const results = await db
       .collection("commandes")
       .aggregate([
-      { $unwind: "$ligne_commande" },
-      {
-        $match: {
-        "ligne_commande.status": { $nin: ["confirmed", "livred"] },
-        },
-      },
-      {
-        $lookup: {
-        from: "tubes",
-        localField: "ligne_commande.apn",
-        foreignField: "dpn",
-        as: "tube_info",
-        },
-      },
-      { $unwind: "$tube_info" },
-      {
-        $project: {
-        barcode: "$serial_cmd",
-        apn: "$tube_info.dpn",
-        command_by: "$user_id",
-        created_at: "$createdAt",
-        quantityCmd: "$ligne_commande.quantite",
-        quantityLiv: {
-          $size: {
-          $filter: {
-            input: "$ligne_commande.serial_ids",
-            as: "item",
-            cond: {
-            $or: [
-              { $eq: ["$$item.status", "livred"] },
-              { $eq: ["$$item.status", "Confirmed"] },
-            ],
+        { $unwind: "$ligne_commande" },
+        {
+          $match: {
+            "ligne_commande.status": {
+              $nin: ["confirmed", "livred", "cancelled"],
             },
           },
+        },
+        {
+          $lookup: {
+            from: "tubes",
+            localField: "ligne_commande.apn",
+            foreignField: "dpn",
+            as: "tube_info",
           },
         },
-        statut: "$ligne_commande.status",
-        rack: "$tube_info.rack",
-        description: "$ligne_commande.description",
+        { $unwind: "$tube_info" },
+        {
+          $project: {
+            barcode: "$serial_cmd",
+            apn: "$tube_info.dpn",
+            command_by: "$user_id",
+            created_at: "$createdAt",
+            quantityCmd: "$ligne_commande.quantite",
+            quantityLiv: {
+              $size: {
+                $filter: {
+                  input: "$ligne_commande.serial_ids",
+                  as: "item",
+                  cond: {
+                    $or: [
+                      { $eq: ["$$item.status", "livred"] },
+                      { $eq: ["$$item.status", "Confirmed"] },
+                    ],
+                  },
+                },
+              },
+            },
+            statut: "$ligne_commande.status",
+            rack: "$tube_info.rack",
+            description: "$ligne_commande.description",
+          },
         },
-      },
-      { $sort: { description: -1, created_at: 1 } },
+        { $sort: { description: -1, created_at: 1 } },
       ])
       .toArray();
 
@@ -221,125 +222,137 @@ module.exports = {
     }
   }),
 
+  deliverCommand: asyncHandler(async (req, res) => {
+    const { apn, serial_number } = req.body;
 
-
-deliverCommand: asyncHandler(async (req, res) => {
-  const { apn, serial_number } = req.body;
-
-  try {
-    // Find ONE command that has a ligne_commande with the matching APN and not delivered or confirmed
-    const [commande] = await db.collection("commandes").aggregate([
-      {
-        $project: {
-          ligne_commande: {
-            $filter: {
-              input: "$ligne_commande",
-              as: "lc",
-              cond: {
-                $and: [
-                  { $eq: ["$$lc.apn", apn] },
-                  { $not: { $in: ["$$lc.status", ["livred", "confirmed"]] } }
-                ]
-              }
-            }
+    try {
+      // Find ONE command that has a ligne_commande with the matching APN and not delivered or confirmed
+      const [commande] = await db
+        .collection("commandes")
+        .aggregate([
+          {
+            $project: {
+              ligne_commande: {
+                $filter: {
+                  input: "$ligne_commande",
+                  as: "lc",
+                  cond: {
+                    $and: [
+                      { $eq: ["$$lc.apn", apn] },
+                      {
+                        $not: {
+                          $in: [
+                            "$$lc.status",
+                            ["livred", "confirmed", "cancelled"],
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+              _id: 1,
+              status: 1,
+            },
           },
-          _id: 1,
-          status: 1,
-        }
-      },
-      {
-        $match: {
-          "ligne_commande.0": { $exists: true }
-        }
-      },
-      { $limit: 1 }
-    ]).toArray();
-    
-    
-    if (!commande) {
-      throw new Error("Command not found or all lines are already delivered/confirmed");
-    }
+          {
+            $match: {
+              "ligne_commande.0": { $exists: true },
+            },
+          },
+          { $limit: 1 },
+        ])
+        .toArray();
 
-    const line = commande.ligne_commande[0];
-    line.serial_ids = line.serial_ids || [];
-    const newQuantityLiv = line.serial_ids.length + 1;
+      if (!commande) {
+        throw new Error(
+          "Command not found or all lines are already delivered/confirmed"
+        );
+      }
 
-    if (newQuantityLiv > line.quantite) {
-      return res.status(400).json({
+      const line = commande.ligne_commande[0];
+      line.serial_ids = line.serial_ids || [];
+      const newQuantityLiv = line.serial_ids.length + 1;
+
+      if (newQuantityLiv > line.quantite) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot deliver more than ordered (${line.quantite})`,
+        });
+      }
+
+      // Check if the serial number was already used elsewhere
+      const dup = await db.collection("commandes").findOne({
+        "ligne_commande.serial_ids.serial": serial_number,
+      });
+      if (dup) throw new Error("This serial was delivered elsewhere");
+
+      // Check if the serial is already in the line
+      if (line.serial_ids.some((s) => s.serial === serial_number)) {
+        throw new Error("This serial already registered here");
+      }
+
+      const newLineStatus =
+        newQuantityLiv === line.quantite ? "livred" : "partiellement_livred";
+
+      // Update the line in the original document
+      await db.collection("commandes").updateOne(
+        {
+          _id: new ObjectId(commande._id),
+          "ligne_commande.apn": apn,
+        },
+        {
+          $push: {
+            "ligne_commande.$.serial_ids": {
+              serial: serial_number,
+              status: "livred",
+              delivered_at: new Date(),
+            },
+          },
+          $set: {
+            "ligne_commande.$.quantityLiv": newQuantityLiv,
+            "ligne_commande.$.status": newLineStatus,
+            "ligne_commande.$.estLiv": newQuantityLiv === line.quantite,
+            "ligne_commande.$.updated_at": new Date(),
+          },
+        }
+      );
+
+      const updated = await db
+        .collection("commandes")
+        .findOne({ _id: new ObjectId(commande._id) });
+
+      const allLinesDelivered = updated.ligne_commande.every(
+        (l) => l.status === "livred"
+      );
+
+      if (allLinesDelivered && updated.status !== "livred") {
+        await db
+          .collection("commandes")
+          .updateOne(
+            { _id: new ObjectId(commande._id) },
+            { $set: { status: "livred", updatedAt: new Date() } }
+          );
+      }
+
+      res.json({
+        success: true,
+        message: "Command delivered successfully",
+        data: {
+          serial_number,
+          current_quantity: newQuantityLiv,
+          line_status: newLineStatus,
+          commande_fully_delivered: allLinesDelivered,
+        },
+      });
+    } catch (error) {
+      console.error("Delivery error:", error);
+      res.status(400).json({
         success: false,
-        message: `Cannot deliver more than ordered (${line.quantite})`,
+        message: error.message || "Delivery failed",
       });
     }
-
-    // Check if the serial number was already used elsewhere
-    const dup = await db.collection("commandes").findOne({
-      "ligne_commande.serial_ids.serial": serial_number,
-    });
-    if (dup) throw new Error("This serial was delivered elsewhere");
-
-    // Check if the serial is already in the line
-    if (line.serial_ids.some((s) => s.serial === serial_number)) {
-      throw new Error("This serial already registered here");
-    }
-
-    const newLineStatus = newQuantityLiv === line.quantite ? "livred" : "partiellement_livred";
-
-    // Update the line in the original document
-await db.collection("commandes").updateOne(
-      {
-        _id: new ObjectId(commande._id),
-        "ligne_commande.apn": apn,
-      },
-      {
-        $push: {
-          "ligne_commande.$.serial_ids": {
-            serial: serial_number,
-            status: "livred",
-            delivered_at: new Date(),
-          },
-        },
-        $set: {
-          "ligne_commande.$.quantityLiv": newQuantityLiv,
-          "ligne_commande.$.status": newLineStatus,
-          "ligne_commande.$.estLiv": newQuantityLiv === line.quantite,
-          "ligne_commande.$.updated_at": new Date(),
-        },
-      }
-    );
-
-    const updated = await db.collection("commandes").findOne({ _id: new ObjectId(commande._id) });
-
-    const allLinesDelivered = updated.ligne_commande.every(
-      (l) => l.status === "livred"
-    );
-
-    if (allLinesDelivered && updated.status !== "livred") {
-      await db.collection("commandes").updateOne(
-        { _id: new ObjectId(commande._id) },
-        { $set: { status: "livred", updatedAt: new Date() } }
-      );
-    }
-
-    res.json({
-      success: true,
-      message: "Command delivered successfully",
-      data: {
-        serial_number,
-        current_quantity: newQuantityLiv,
-        line_status: newLineStatus,
-        commande_fully_delivered: allLinesDelivered,
-      },
-    });
-
-  } catch (error) {
-    console.error("Delivery error:", error);
-    res.status(400).json({
-      success: false,
-      message: error.message || "Delivery failed",
-    });
-  }
-}),
-
+  }),
 
   validateCommands: asyncHandler(async (req, res) => {
     const { apn, serial_number } = req.body;

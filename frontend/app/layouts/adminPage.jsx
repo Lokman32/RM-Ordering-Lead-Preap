@@ -38,6 +38,11 @@ export default function AdminPage({ children }) {
           className={`p-3 uppercase hover:text-amber-400 ${location.pathname === '/admin/dashboard' ? 'bg-amber-400 text-black hover:text-black' : ''}`}>
           dashboard
         </Link>
+        <Link
+          to="/admin/commandes"
+          className={`p-3 uppercase hover:text-amber-400 ${location.pathname === '/admin/commandes' ? 'bg-amber-400 text-black hover:text-black' : ''}`}>
+          commandes
+        </Link>
       </div>
       {children}
     </>

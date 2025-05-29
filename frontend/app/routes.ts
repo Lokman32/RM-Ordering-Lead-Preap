@@ -15,4 +15,5 @@ export default [
   // admin
   route('/admin/rack', 'routes/admin/rack.jsx'),
   route('/admin/dashboard', 'routes/admin/dashboard.jsx'),
+  route('/admin/commandes', 'routes/admin/commandes.jsx'),
 ] satisfies RouteConfig;

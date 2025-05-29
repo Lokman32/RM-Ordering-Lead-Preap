@@ -19,6 +19,9 @@ const {
   historySummary,
   updateRack,
   searchRack,
+  deleteApn,
+  statusCommand,
+  changeStatusCommand
 } = require("../controllers/Admin.controller");
 const { loginPost, logout } = require("../controllers/Auth.controller");
 
@@ -43,5 +46,9 @@ router.put("/api/description/:apn/:commande_id", updateDescription);
 
 router.get("/api/history", historySummary);
 router.get("/api/history/details", historyDetails);
+router.delete("/api/products/:apn",deleteApn)
 
+router.get("/api/admin/commands", statusCommand);
+
+router.put("/api/admin/commands/:id/lignes/:apn/status", changeStatusCommand);
 module.exports = router;

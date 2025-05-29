@@ -29,7 +29,7 @@ export default function index() {
       closeModal();
       return;
     }
-    await fetch(`/api/description/${modalOrder.apn}/${modalOrder.barcode}`, {
+    await fetch(`${import.meta.env.VITE_API_URL}/api/description/${modalOrder.apn}/${modalOrder.barcode}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -233,7 +233,7 @@ export default function index() {
                       onClick={() => openEditModal(order)}
                     >
                       <td className="px-4 py-2">{order.apn}</td>
-                      <td className="px-4 py-2">{order.quantityCmd}</td>
+                      <td className="px-4 py-2">{order.quantityCmd - order.quantityLiv}</td>
                       <td className="px-4 py-2">{order.command_by}</td>
                       <td className="px-4 py-2">{order.barcode}</td>
                       <td className="px-4 py-2 text-nowrap">

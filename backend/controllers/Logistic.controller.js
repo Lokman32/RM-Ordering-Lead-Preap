@@ -9,8 +9,8 @@ module.exports = {
       { $unwind: "$ligne_commande" },
       {
         $match: {
-        status: { $nin: ["confirmed", "livred"] },
-        "ligne_commande.status": { $nin: ["confirmed", "livred"] },
+        status: { $nin: ["confirmed", "livred", "cancelled"] },
+        "ligne_commande.status": { $nin: ["confirmed", "livred", "cancelled"] },
         },
       },
       {
@@ -23,6 +23,7 @@ module.exports = {
         command_by: "$user_id",
         statut: "$ligne_commande.status",
         rack: "$ligne_commande.rack",
+        quantityLiv: { $size: { $ifNull: ["$ligne_commande.serial_ids", []] } },
         serial_ids: "$ligne_commande.serial_ids",
         created_at: "$createdAt",
         apn: "$ligne_commande.apn",

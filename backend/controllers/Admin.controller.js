@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { ObjectId } = require("mongodb");
 const { asyncHandler } = require("../middleware/asyncHandler");
 
 const getShiftBounds = (dateStr, shift) => {
@@ -59,31 +60,42 @@ module.exports = {
     });
   }),
 
-  updateRack: asyncHandler(async (req, res) => {
-    const { dpn, rack } = req.body;
-    if (!dpn || !rack) {
-      return res.status(400).json({
-        success: false,
-        message: "DPN and Rack are required",
-      });
-    }
+updateRack: asyncHandler(async (req, res) => {
+  const { dpn, id, ...updateFields } = req.body;
+  delete updateFields._id;
 
-    const result = await db
-      .collection("tubes")
-      .updateOne({ dpn }, { $set: { rack } });
+  if (!dpn) {
+    return res.status(400).json({
+      success: false,
+      message: "DPN is required",
+    });
+  }
 
-    if (result.modifiedCount > 0) {
-      res.json({
-        success: true,
-        message: `Rack updated successfully for DPN: ${dpn}`,
-      });
-    } else {
-      res.status(404).json({
-        success: false,
-        message: `Tube with DPN: ${dpn} not found`,
-      });
-    }
-  }),
+  if (Object.keys(updateFields).length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "No fields provided to update",
+    });
+  }
+
+  const result = await db
+    .collection("tubes")
+    .updateOne({ dpn }, { $set: updateFields });
+
+    console.log(dpn, updateFields)
+  if (result.modifiedCount > 0) {
+    return res.json({
+      success: true,
+      message: `Fields updated successfully for DPN: ${dpn}`,
+    });
+  } else {
+    return res.status(404).json({
+      success: false,
+      message: `No tube found with DPN: ${dpn} or no changes detected`,
+    });
+  }
+}),
+
 
   historyDetails: asyncHandler(async (req, res) => {
     const { date, shift } = req.query;
@@ -149,5 +161,75 @@ module.exports = {
     }
 
     res.json([out]);
+  }),
+
+  deleteApn: asyncHandler(async (req, res) => {
+    const { apn } = req.params;
+    await db.collection("tubes").deleteOne({ dpn: apn });
+    res.json({
+      success: true,
+      message: `${apn} deleted`,
+    });
+  }),
+
+  statusCommand: asyncHandler(async (req, res) => {
+    const { date } = req.query;
+
+    let matchStage = {};
+    if (date) {
+      const base = new Date(date + "T00:00:00.000Z");
+      const start = new Date(base.setHours(0, 0, 0, 0));
+      const end = new Date(base.setHours(23, 59, 59, 999));
+      matchStage = { createdAt: { $gte: start, $lte: end } };
+    }
+
+    const commandes = await db
+      .collection("commandes")
+      .aggregate([
+        { $match: matchStage },
+        { $unwind: "$ligne_commande" },
+        {
+          $project: {
+            serial_cmd: 1,
+            apn: "$ligne_commande.apn",
+            quantityCmd: "$ligne_commande.quantite",
+            quantityLiv: { $size: "$ligne_commande.serial_ids" },
+            commanded_at: "$createdAt",
+            last_delivered: {
+              $max: "$ligne_commande.serial_ids.delivered_at",
+            },
+            status: "$ligne_commande.status",
+          },
+        },
+        { $sort: { commanded_at: 1 } },
+      ])
+      .toArray();
+
+    res.json({ data: commandes });
+  }),
+
+  changeStatusCommand: asyncHandler(async (req, res) => {
+    const { id, apn } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.json({ message: "Status is required" });
+    }
+    if (!apn) {
+      return res.json({ message: "APN is required" });
+    }
+
+    const result = await db
+      .collection("commandes")
+      .updateOne(
+        { _id: new ObjectId(id), "ligne_commande.apn": apn },
+        { $set: { "ligne_commande.$.status": status } }
+      );
+
+    if (result.modifiedCount === 0) {
+      return res.json({ message: "Commande or APN not found" });
+    }
+
+    res.json({ message: "Status updated successfully" });
   }),
 };
