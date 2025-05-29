@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router';
 export default function Login() {
   const [matricule, setMatricule] = useState('');
   const [error, setError] = useState('');
-const navigate = useNavigate();
+  const navigate = useNavigate();
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -22,12 +22,15 @@ const navigate = useNavigate();
         throw new Error(data.message || 'Échec de la connexion');
       }
 
-      // Store JWT and user data
       localStorage.setItem('token', data.token);
       localStorage.setItem('matricule', JSON.stringify(data.data.matricule));
 
-      // Redirect to dashboard
-      navigate('/tube/index');
+      if (data.data.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/tube/index');
+      }
+
     } catch (err) {
       setError(err.message);
     }

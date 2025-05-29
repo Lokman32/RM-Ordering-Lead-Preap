@@ -12,8 +12,10 @@ import type { Route } from "./+types/root";
 import "./app.css";
 // import { Helmet } from "react-helmet";
 import { HelmetProvider, Helmet } from "react-helmet-async";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 // const { HelmetProvider } = pkg;
+import { jwtDecode } from "jwt-decode";
+import { useToken } from "./hook/useToken";
 
 export function HydrateFallback() {
   return (
@@ -40,6 +42,7 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [decoded, setDecoded] = useState<any>(null);
   const logout = () => {
     fetch(`${import.meta.env.VITE_API_URL}/api/logout`, {
       method: "POST",
@@ -52,10 +55,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
       }
     });
   };
+
+  const token = useToken();
+  useEffect(() => {
+    if (token) {
+      try {
+        const decodedToken = jwtDecode(token);
+        setDecoded(decodedToken);
+      } catch (error) {
+        console.error("Invalid token:", error);
+      }
+    }
+  }, [token]);
+
   return (
     <HelmetProvider>
       <Meta />
-    <Links /> 
+      <Links />
       <Helmet>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -67,8 +83,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <link rel="icon" type="image/png" href="/favicon-32x32.png" />
       </Helmet>
       <div className="relative text-gray-800 min-h-screen flex flex-col">
-      <div style={{ backgroundImage: "url('/aptiv2.JPG')",backgroundSize:'cover' }} className="absolute h-full w-full z-10 top-0"><div className="absolute h-full w-full z-50 bg-black/50 backdrop-blur-xs top-0"></div></div>
-      
+        <div
+          style={{
+            backgroundImage: "url('/aptiv2.JPG')",
+            backgroundSize: "cover",
+          }}
+          className="absolute h-full w-full z-10 top-0"
+        >
+          <div className="absolute h-full w-full z-50 bg-black/50 backdrop-blur-xs top-0"></div>
+        </div>
+
         <div className="relative z-10 flex flex-col min-h-screen bg-white/10">
           <nav className="backdrop-blur-sm border-b shadow-md p-4 text-white bg-black">
             <div className="container mx-auto flex justify-between items-center">
@@ -116,9 +140,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <li>
                   <Link to="/logistic/index">Logistic</Link>
                 </li>
-                <li>
-                  <Link to="/admin/dashboard">Admin</Link>
-                </li>
+                {decoded?.role === "admin" && (
+                  <li>
+                    <Link to="/admin/dashboard">Admin</Link>
+                  </li>
+                )}
                 <li
                   onClick={logout}
                   className=" text-red-500 hover:text-red-700 cursor-pointer"

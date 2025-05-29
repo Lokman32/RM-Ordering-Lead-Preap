@@ -1,12 +1,10 @@
-// routes/_redirect.jsx
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 
 export default function Redirect() {
   const navigate = useNavigate();
-  
-  if (typeof window !== 'undefined') {
+  useEffect(() => {
     navigate('/login');
-  }
+  }, []);
   return null;
 }

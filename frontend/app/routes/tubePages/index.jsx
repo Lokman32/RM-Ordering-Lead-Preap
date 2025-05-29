@@ -22,12 +22,11 @@ export default function index() {
     const currentTime = Date.now() / 1000;
 
     if (decoded.exp < currentTime) {
-      // Token is expired
       localStorage.removeItem('token');
       navigate('/login');
     } else {
       setCmd(decoded.matricule);
-      console.log(decoded)
+      // console.log(decoded)
     }
   }, [navigate, command_by]);
 
