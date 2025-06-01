@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const { ObjectId } = require("mongodb");
 const { asyncHandler } = require("../middleware/asyncHandler");
+const { get } = require("mongoose");
 
 const getShiftBounds = (dateStr, shift) => {
   const base = new Date(dateStr + "T00:00:00.000Z");
@@ -60,41 +61,41 @@ module.exports = {
     });
   }),
 
-updateRack: asyncHandler(async (req, res) => {
-  const { dpn, id, ...updateFields } = req.body;
-  delete updateFields._id;
+  updateRack: asyncHandler(async (req, res) => {
+    const { dpn, id, ...updateFields } = req.body;
+    delete updateFields._id;
 
-  if (!dpn) {
-    return res.status(400).json({
-      success: false,
-      message: "DPN is required",
-    });
-  }
+    if (!dpn) {
+      return res.status(400).json({
+        success: false,
+        message: "DPN is required",
+      });
+    }
 
-  if (Object.keys(updateFields).length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: "No fields provided to update",
-    });
-  }
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No fields provided to update",
+      });
+    }
 
-  const result = await db
-    .collection("tubes")
-    .updateOne({ dpn }, { $set: updateFields });
+    const result = await db
+      .collection("tubes")
+      .updateOne({ dpn }, { $set: updateFields });
 
     console.log(dpn, updateFields)
-  if (result.modifiedCount > 0) {
-    return res.json({
-      success: true,
-      message: `Fields updated successfully for DPN: ${dpn}`,
-    });
-  } else {
-    return res.status(404).json({
-      success: false,
-      message: `No tube found with DPN: ${dpn} or no changes detected`,
-    });
-  }
-}),
+    if (result.modifiedCount > 0) {
+      return res.json({
+        success: true,
+        message: `Fields updated successfully for DPN: ${dpn}`,
+      });
+    } else {
+      return res.status(404).json({
+        success: false,
+        message: `No tube found with DPN: ${dpn} or no changes detected`,
+      });
+    }
+  }),
 
 
   historyDetails: asyncHandler(async (req, res) => {
@@ -231,5 +232,41 @@ updateRack: asyncHandler(async (req, res) => {
     }
 
     res.json({ message: "Status updated successfully" });
+  }),
+
+  getCommandDetails: asyncHandler(async (req, res) => {
+    const { serial_cmd, apn } = req.query;
+    if (!serial_cmd || !apn) {
+      return res
+        .json({ serial_cmd, apn });
+    }
+
+    const commandDetails = await db
+      .collection("commandes")
+      .aggregate([
+        { $match: { serial_cmd, "ligne_commande.apn": apn } },
+        { $unwind: "$ligne_commande" },
+        {
+          $project: {
+            serial_cmd: 1,
+            apn: "$ligne_commande.apn",
+            quantityCmd: "$ligne_commande.quantite",
+            quantityLiv: { $size: "$ligne_commande.serial_ids" },
+            commanded_at: "$createdAt",
+            serial_ids: "$ligne_commande.serial_ids",
+            last_delivered: {
+              $max: "$ligne_commande.serial_ids.delivered_at",
+            },
+            status: "$ligne_commande.status",
+          },
+        },
+      ])
+      .toArray();
+
+    if (commandDetails.length === 0) {
+      return res.json({ message: "No command details found" });
+    }
+
+    res.json({ success: true, data: commandDetails[0] });
   }),
 };

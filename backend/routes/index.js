@@ -21,7 +21,8 @@ const {
   searchRack,
   deleteApn,
   statusCommand,
-  changeStatusCommand
+  changeStatusCommand,
+  getCommandDetails
 } = require("../controllers/Admin.controller");
 const { loginPost, logout } = require("../controllers/Auth.controller");
 
@@ -51,4 +52,5 @@ router.delete("/api/products/:apn",deleteApn)
 router.get("/api/admin/commands", statusCommand);
 
 router.put("/api/admin/commands/:id/lignes/:apn/status", changeStatusCommand);
+router.get("/api/command-details", getCommandDetails);
 module.exports = router;

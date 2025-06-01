@@ -36,37 +36,35 @@ export default function Confirm() {
     }
   };
 
-  const handleSerialKey = (e) => {
-    if (e.code !== "Enter") return;
-    e.preventDefault();
-    const serial = e.target.value.trim();
-    if (!currentAPN || !serial) {
-      return alert("Tous les champs doit être scannés.");
-    }
+const handleSerialKey = (e) => {
+  if (e.code !== "Enter") return;
+  e.preventDefault();
 
-    fetch(`${import.meta.env.VITE_API_URL}/api/validate-products`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ apn: currentAPN, serial_number: serial }),
+  const serial = e.target.value.trim();
+
+  e.target.value = "";
+  apnRef.current.value = "";
+  setCurrentAPN("");
+  apnRef.current.focus();
+
+  if (!currentAPN || !serial) {
+    alert("Tous les champs doit être scannés.");
+    return;
+  }
+
+  fetch(`${import.meta.env.VITE_API_URL}/api/validate-products`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ apn: currentAPN, serial_number: serial }),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      fetchOrders();
     })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) {
-          // 3) clear inputs
-          e.target.value = "";
-          apnRef.current.value = "";
-          setCurrentAPN("");
-          apnRef.current.focus();
+    .catch(() => alert("Erreur de connexion"));
+};
 
-          // 4) re-fetch the updated list
-          fetchOrders();
-        } else {
-          alert(data.message || "Validation failed");
-        }
-      })
-      .catch(() => alert("Erreur de connexion"));
-  };
 
   return (
     <TubePage>

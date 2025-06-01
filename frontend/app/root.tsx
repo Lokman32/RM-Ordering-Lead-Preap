@@ -7,6 +7,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
+import { Toaster } from "react-hot-toast";
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -178,6 +179,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <main className="container mx-auto flex-grow px-4 py-8">
             {children}
           </main>
+          <Toaster
+            position="bottom-right"
+            reverseOrder={false}
+            toastOptions={{
+              duration: 8000,
+              style: {
+                border: "1px solid #713200",
+                width: "500px",
+                padding: "30px",
+                fontSize: "22px",
+                color: "#ffffff",
+              },
+              success: {
+                style: {
+                  background: "green",
+                },
+              },
+              error: {
+                style: {
+                  background: "red",
+                },
+              },
+            }}
+          />
 
           <footer className="bg-white/40 flex justify-between text-xs text-black py-4 border-t px-6 z-50">
             <div className="text-[#f84018]">

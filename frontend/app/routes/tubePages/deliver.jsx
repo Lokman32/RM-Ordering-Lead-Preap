@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import TubePage from "../../layouts/tubePage";
+import toast from 'react-hot-toast';
 
 export default function Confirm() {
   // const [popupOpen, setPopupOpen] = useState(false);
@@ -64,9 +65,19 @@ export default function Confirm() {
   const handleSerialKey = (e) => {
     if (e.code !== "Enter") return;
     e.preventDefault();
+
     const serial_number = e.target.value.trim();
     let apn = currentAPN;
 
+    e.target.value = "";
+    apnRef.current.value = "";
+
+    const serialRegex = /^x\d{10}$/i;
+    if (!serialRegex.test(serial_number)) {
+      toast.error("Produit non valide !");
+      apnRef.current.focus();
+      return;
+    }
 
     fetch(`${import.meta.env.VITE_API_URL}/api/deliver-products`, {
       method: "POST",
@@ -76,14 +87,19 @@ export default function Confirm() {
     })
       .then((r) => r.json())
       .then((data) => {
-        e.target.value = "";
-        apnRef.current.value = "";
         apnRef.current.focus();
         if (data.success) {
+          toast.success("Produit validé !");
           fetchOrders();
+        } else {
+          toast.error("Produit non valide !");
         }
       })
+      .catch((err) => {
+        console.error("Error during delivery:", err);
+      });
   };
+
 
   return (
     <TubePage>
@@ -96,36 +112,8 @@ export default function Confirm() {
 
         <div className="my-4 flex justify-between">
           <h1 className="text-xl font-semibold">Order list</h1>
-          {/* <button
-            onClick={openPopup}
-            className="bg-blue-500 px-4 py-2 rounded text-white font-semibold"
-          >
-            Scan Order
-          </button> */}
         </div>
 
-        {/* {popupOpen && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50">
-            <div className="bg-white p-6 rounded shadow-lg">
-              <h2 className="text-lg font-semibold mb-4">Scanner la Commande</h2>
-              <input
-                ref={cmdRef}
-                type="text"
-                placeholder="Serial de Commande"
-                onKeyDown={handleCmdKey}
-                className="w-full px-4 py-2 border rounded mb-4"
-              />
-              <div className="flex justify-end">
-                <button
-                  onClick={closePopup}
-                  className="bg-gray-500 text-white px-4 py-2 rounded"
-                >
-                  Annuler
-                </button>
-              </div>
-            </div>
-          </div>
-        )} */}
 
         <div className="flex flex-col items-center">
           <input
@@ -178,10 +166,10 @@ export default function Confirm() {
                     order.statut === "livred"
                       ? "bg-orange-300"
                       : order.statut === "confirmé"
-                      ? "bg-green-300"
-                      : order.statut === "partiellement_livred"
-                      ? "bg-yellow-300"
-                      : delayClass;
+                        ? "bg-green-300"
+                        : order.statut === "partiellement_livred"
+                          ? "bg-yellow-300"
+                          : delayClass;
 
                   return (
                     <tr key={i} className={rowClass}>
