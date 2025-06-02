@@ -269,4 +269,48 @@ module.exports = {
 
     res.json({ success: true, data: commandDetails[0] });
   }),
+
+  supprimerLigneCommande: asyncHandler(async (req, res) => {
+    const { serial_cmd, apn } = req.params;
+    if (!serial_cmd || !apn) {
+      return res.status(400).json({ message: "serial_cmd and apn are required" });
+    }
+
+    const result = await db.collection("commandes").updateOne(
+      { serial_cmd, "ligne_commande.apn": apn },
+      { $pull: { ligne_commande: { apn } } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.json({ message: "No matching command found" });
+    }
+
+    res.json({ success: true, message: "Ligne commande deleted successfully" });
+  }),
+
+  supprimerSerialId: asyncHandler(async (req, res) => {
+  const { serial_cmd, apn, serial_id } = req.params;
+  if (!serial_cmd || !apn || !serial_id) {
+    return res.status(400).json({ message: "serial_cmd, apn and serial_id are required" });
+  }
+
+  const result = await db.collection("commandes").updateOne(
+    {
+      serial_cmd,
+      "ligne_commande.apn": apn
+    },
+    {
+      $pull: {
+        "ligne_commande.$.serial_ids": { serial: serial_id }
+      }
+    }
+  );
+
+  if (result.modifiedCount === 0) {
+    return res.json({ message: "No matching command found or serial not removed" });
+  }
+
+  res.json({ success: true, message: "Serial ID deleted successfully" });
+}),
+
 };
