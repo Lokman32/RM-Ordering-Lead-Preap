@@ -22,7 +22,9 @@ const {
   deleteApn,
   statusCommand,
   changeStatusCommand,
-  getCommandDetails
+  getCommandDetails,
+  supprimerLigneCommande,
+  supprimerSerialId,
 } = require("../controllers/Admin.controller");
 const { loginPost, logout } = require("../controllers/Auth.controller");
 
@@ -53,4 +55,7 @@ router.get("/api/admin/commands", statusCommand);
 
 router.put("/api/admin/commands/:id/lignes/:apn/status", changeStatusCommand);
 router.get("/api/command-details", getCommandDetails);
+
+router.delete("/api/commande/:serial_cmd/lignes/:apn", supprimerLigneCommande);
+router.delete("/api/commande/:serial_cmd/lignes/:apn/serial_id/:serial_id", supprimerSerialId);
 module.exports = router;

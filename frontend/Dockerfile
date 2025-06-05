@@ -1,21 +1,30 @@
-# Use Node for building and serving
+# Stage 1: Build
+FROM node:20 AS builder
+
+WORKDIR /app
+
+# Avoid broken optional deps by deleting lockfile
+COPY package*.json ./
+RUN rm -f package-lock.json && npm install --legacy-peer-deps
+
+# Copy source code
+COPY . .
+# Build your app (React Router build)
+RUN npm run build
+
+# Stage 2: Serve built app
 FROM node:20
 
 WORKDIR /app
 
-# Install dependencies
-COPY package*.json ./
-RUN npm install --legacy-peer-deps
+# Only install serve (lightweight)
+RUN npm install -g serve
 
-# Copy source and build app
-COPY . .
-RUN npm run build
+# Copy built files from builder
+COPY --from=builder /app/build ./build
 
-# Install serve tools for preview (Vite's own or general serve)
-RUN npm install -g vite
-
-# Expose desired port
+# Expose the port
 EXPOSE 3013
 
-# Use Vite's preview server (production preview)
-CMD ["npm", "run", "start", "--host"]
+# Start the app using the `serve` tool directly
+CMD ["serve", "-s", "build/client", "-l", "3013"]

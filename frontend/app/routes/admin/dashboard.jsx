@@ -114,6 +114,46 @@ export default function HistoryDashboard() {
     }
   };
 
+  const deleteLigneCommande = async (serial_cmd, apn) => {
+    if (!serial_cmd || !apn) return;
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/commande/${encodeURIComponent(serial_cmd)}/lignes/${encodeURIComponent(apn)}`,
+        { method: 'DELETE' }
+      );
+
+      if (res.ok) {
+        setDetails(details.filter(d => d.serial_cmd !== serial_cmd || d.apn !== apn));
+      } else {
+        console.error('Failed to delete ligne commande');
+      }
+    } catch (err) {
+      console.error('Error deleting ligne commande:', err);
+    }
+  }
+
+  const deleteSerialId = async (serial_cmd, apn, serial_id) => {
+    if (!serial_cmd || !apn || !serial_id) return;
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/commande/${encodeURIComponent(serial_cmd)}/lignes/${encodeURIComponent(apn)}/serial_id/${encodeURIComponent(serial_id)}`,
+        { method: 'DELETE' }
+      );
+
+      if (res.ok) {
+        setDetailsRow(prev => ({
+          ...prev,
+          serial_ids: prev.serial_ids.filter(s => s.serial !== serial_id)
+        }));
+      } else {
+        console.error('Failed to delete serial id');
+      }
+    } catch (err) {
+      console.error('Error deleting serial id:', err);
+    }
+  }
 
   return (
     <AdminPage>
@@ -160,13 +200,20 @@ export default function HistoryDashboard() {
             <table className="mt-6 min-w-full bg-white shadow">
               <thead>
                 <tr>
-                  {['Commande', 'APN', 'Qté Cmd', 'Qté Liv', 'Date Cmd', 'Statut']
+                  {['Commande', 'APN', 'Qté Cmd', 'Qté Liv', 'Date Cmd', 'Statut', 'Supprimer']
                     .map(h => <th key={h} className="px-4 py-2"> {h} </th>)}
                 </tr>
               </thead>
               <tbody>
                 {details.length ? details.map((d, i) => (
-                  <tr key={i} className="border-b" onClick={() => handleRowClick(d.serial_cmd, d.apn)}>
+                  <tr
+                    key={i}
+                    className="border-b"
+                    onClick={(e) => {
+                      if (e.target.tagName === 'BUTTON') return;
+                      handleRowClick(d.serial_cmd, d.apn)
+                    }}
+                  >
                     <td className="px-4 py-2">{d.serial_cmd}</td>
                     <td className="px-4 py-2">{d.apn}</td>
                     <td className="px-4 py-2">{d.quantityCmd}</td>
@@ -175,6 +222,12 @@ export default function HistoryDashboard() {
                       {new Date(d.commanded_at).toLocaleString()}
                     </td>
                     <td className="px-4 py-2">{d.status}</td>
+                    <td className="px-4 py-2 text-center">
+                      <button
+                        className='bg-red-500 px-4 py-2 rounded cursor-pointer'
+                        onClick={()=>deleteLigneCommande(d.serial_cmd,d.apn)}
+                      >Supprimer</button>
+                    </td>
                   </tr>
                 )) : (
                   <tr>
@@ -194,7 +247,7 @@ export default function HistoryDashboard() {
               onClick={() => setSelectedRow(null)}
               aria-label="Close details modal"
             />
-            <div className="bg-white  z-50 rounded-lg shadow-lg max-w-2xl w-full p-6 relative">
+            <div className="bg-white z-50 rounded-lg shadow-lg  max-w-7xl p-6 relative">
               <button
                 onClick={() => {
                   setSelectedRow(null);
@@ -208,7 +261,7 @@ export default function HistoryDashboard() {
               {loadingDetails ? (
                 <div className="text-center py-10">Chargement...</div>
               ) : detailsRow ? (
-                <div className='overflow-y-auto flex flex-col items-center justify-center max-h-[70vh] min-h-[50vh]'>
+                <div className='overflow-y-auto bg-white flex w-full flex-col items-center justify-center max-h-[70vh] min-h-[50vh]'>
                   <h3 className="text-xl font-semibold mb-4">
                     Commande : {detailsRow.serial_cmd}
                   </h3>
@@ -245,6 +298,7 @@ export default function HistoryDashboard() {
                                   <th className="px-2 py-1 border">Statut</th>
                                   <th className="px-2 py-1 border">Date Livraison</th>
                                   <th className="px-2 py-1 border">Date Confirmation</th>
+                                  <th className="px-2 py-1 border">Supprimer</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -254,6 +308,12 @@ export default function HistoryDashboard() {
                                     <td className="px-2 py-1 border">{s.status}</td>
                                     <td className="px-2 py-1 text-center border">{s.delivered_at ? new Date(s.delivered_at).toLocaleString() : '-'}</td>
                                     <td className="px-2 py-1 text-center border">{s.confirmed_at ? new Date(s.delivered_at).toLocaleString() : '-'}</td>
+                                    <td className='px-2 py-1 border'>
+                                      <button
+                                        className='bg-red-500 px-4 py-2 rounded cursor-pointer'
+                                        onClick={()=>deleteSerialId(detailsRow.serial_cmd,detailsRow.apn,s.serial)}
+                                      >Supprimer</button>
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
