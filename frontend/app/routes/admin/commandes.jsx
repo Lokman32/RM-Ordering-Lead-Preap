@@ -10,7 +10,6 @@ export default function CommandesManager() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
 
-  // Options for changing status
   const statusOptions = [
     { value: 'en_attente', label: 'En attente' },
     { value: 'livred', label: 'Livrée' },
@@ -18,7 +17,6 @@ export default function CommandesManager() {
     { value: 'cancelled', label: 'Annulée' },
   ];
 
-  // Fetch commandes on date change
   useEffect(() => {
     fetchCommandes(selectedDate);
   }, [selectedDate]);
@@ -66,19 +64,37 @@ export default function CommandesManager() {
     setSelectedDate(e.target.value);
   };
 
-const getDelayClass = (createdAt, status) => {
-  const diffHrs = Math.floor((Date.now() - new Date(createdAt).getTime()) / 36e5);
+  const getDelayClass = (createdAt, status) => {
+    const diffHrs = Math.floor((new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) - new Date(createdAt).getTime()) / 36e5);
 
-  if (status === "partiellement_livred") {
-    return "bg-yellow-500 text-white hover:text-black";
+    if (status === "partiellement_livred") {
+      return "bg-yellow-500 text-white hover:text-black";
+    }
+    if (diffHrs >= 2 && !['livred', 'confirmed', 'en_attente'].includes(status)) {
+      return "bg-red-700 text-white hover:text-black";
+    }
+
+    return "";
+  };
+
+  const deleteLigneCommande = async (serial_cmd, apn) => {
+    if (!serial_cmd || !apn) return;
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/commande/${encodeURIComponent(serial_cmd)}/lignes/${encodeURIComponent(apn)}`,
+        { method: 'DELETE' }
+      );
+
+      if (res.ok) {
+        setCommandes(commandes.filter(d => d.serial_cmd !== serial_cmd || d.apn !== apn));
+      } else {
+        console.error('Failed to delete ligne commande');
+      }
+    } catch (err) {
+      console.error('Error deleting ligne commande:', err);
+    }
   }
-  if (diffHrs >= 2 && !['livred', 'confirmed', 'en_attente'].includes(status)) {
-    return "bg-red-700 text-white hover:text-black";
-  }
-
-
-  return "";
-};
 
 
   return (
@@ -145,10 +161,10 @@ const getDelayClass = (createdAt, status) => {
                 {commandes.map((commande) => {
                   const delayClass = getDelayClass(commande.commanded_at, commande.status);
                   const delayHrs = Math.floor(
-                    (Date.now() - new Date(commande.commanded_at).getTime()) / 36e5
+                    (new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) - new Date(commande.commanded_at).getTime()) / 36e5
                   );
                   const delayMins = new Date(
-                    Date.now() - new Date(commande.commanded_at).getTime()
+                    new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) - new Date(commande.commanded_at).getTime()
                   ).getUTCMinutes();
                   return (
                     <tr
@@ -156,19 +172,19 @@ const getDelayClass = (createdAt, status) => {
                       className={`hover:bg-gray-100 cursor-pointer ${delayClass}`}
                     >
                       <td className="px-4 py-3 pl-8">{commande.serial_cmd}</td>
-                      <td className="px-4 py-3">{commande.apn}</td>
+                      <td className="px-4 py-3">{commande.isScuib ? commande.apn : commande.dpn}</td>
                       <td className="px-4 py-3">{commande.commanded_at}</td>
                       <td className="px-4 py-2 text-nowrap">
                         {delayHrs} h : {delayMins} min
                       </td>
                       <td className="px-4 py-3">{commande.status}</td>
                       <td className="px-4 py-3">
-                        <button
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
-                          onClick={() => setEditCommande({ ...commande })}
-                        >
-                          Update
-                        </button>
+                        <td className="px-4 py-2 text-center">
+                          <button
+                            className='bg-red-500 px-4 py-2 rounded cursor-pointer'
+                            onClick={() => deleteLigneCommande(commande.serial_cmd, commande.apn)}
+                          >Delete</button>
+                        </td>
                       </td>
                     </tr>
                   )

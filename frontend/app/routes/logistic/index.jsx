@@ -40,7 +40,7 @@ export default function index() {
     setOrders((prevOrders) =>
       prevOrders.map((order) =>
         order.apn === modalOrder.apn && order.barcode === modalOrder.barcode
-          ? { ...order, description: modalValue, date_feedback:new Date() }
+          ? { ...order, description: modalValue, date_feedback: new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) }
           : order
       )
     );
@@ -157,7 +157,7 @@ export default function index() {
 
   const getDelayClass = (createdAt) => {
     const diffHrs = Math.floor(
-      (Date.now() - new Date(createdAt).getTime()) / 36e5
+      (new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) - new Date(createdAt).getTime()) / 36e5
     );
     return diffHrs >= 2 ? "bg-red-700 text-white" : "";
   };
@@ -221,10 +221,10 @@ export default function index() {
                 orders.map((order, key) => {
                   const delayClass = getDelayClass(order.created_at);
                   const delayHrs = Math.floor(
-                    (Date.now() - new Date(order.created_at).getTime()) / 36e5
+                    (new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) - new Date(order.created_at).getTime()) / 36e5
                   );
                   const delayMins = new Date(
-                    Date.now() - new Date(order.created_at).getTime()
+                    new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) - new Date(order.created_at).getTime()
                   ).getUTCMinutes();
                   return (
                     <tr
@@ -232,7 +232,7 @@ export default function index() {
                       className={delayClass}
                       onClick={() => openEditModal(order)}
                     >
-                      <td className="px-4 py-2">{order.apn}</td>
+                      <td className="px-4 py-2">{order.isScuib ? order.apn : order.dpn}</td>
                       <td className="px-4 py-2">{order.quantityCmd - order.quantityLiv}</td>
                       <td className="px-4 py-2">{order.command_by}</td>
                       <td className="px-4 py-2">{order.barcode}</td>

@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import TubePage from "../../layouts/tubePage";
+import toast from 'react-hot-toast';
+
 
 export default function Confirm() {
   const [orders, setOrders] = useState([]);
@@ -8,7 +10,6 @@ export default function Confirm() {
   const apnRef = useRef(null);
   const serialRef = useRef(null);
 
-  // 1) Move initial fetch into a function
   const fetchOrders = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/confirmDelivry`, {
@@ -21,7 +22,6 @@ export default function Confirm() {
     }
   };
 
-  // 2) Call it on mount
   useEffect(() => {
     fetchOrders();
     apnRef.current?.focus();
@@ -36,34 +36,39 @@ export default function Confirm() {
     }
   };
 
-const handleSerialKey = (e) => {
-  if (e.code !== "Enter") return;
-  e.preventDefault();
+  const handleSerialKey = (e) => {
+    if (e.code !== "Enter") return;
+    e.preventDefault();
 
-  const serial = e.target.value.trim();
+    const serial = e.target.value.trim();
 
-  e.target.value = "";
-  apnRef.current.value = "";
-  setCurrentAPN("");
-  apnRef.current.focus();
+    e.target.value = "";
+    apnRef.current.value = "";
+    setCurrentAPN("");
+    apnRef.current.focus();
 
-  if (!currentAPN || !serial) {
-    alert("Tous les champs doit être scannés.");
-    return;
-  }
+    if (!currentAPN || !serial) {
+      alert("Tous les champs doit être scannés.");
+      return;
+    }
 
-  fetch(`${import.meta.env.VITE_API_URL}/api/validate-products`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ apn: currentAPN, serial_number: serial }),
-  })
-    .then((r) => r.json())
-    .then((data) => {
-      fetchOrders();
+    fetch(`${import.meta.env.VITE_API_URL}/api/validate-products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ apn: currentAPN, serial_number: serial }),
     })
-    .catch(() => alert("Erreur de connexion"));
-};
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success === false) {
+          toast.error(data.message)
+          return;
+        }
+        toast.success("Product validated !");
+        fetchOrders();
+      })
+    // .catch(() => alert("Erreur de connexion"));
+  };
 
 
   return (
@@ -105,7 +110,7 @@ const handleSerialKey = (e) => {
               {orders.length > 0 ? (
                 orders.map((o, i) => (
                   <tr key={i}>
-                    <td className="px-4 py-2">{o.apn}</td>
+                    <td className="px-4 py-2">{o.isScuib ? o.apn : o.dpn}</td>
                     <td className="px-4 py-2">{o.serial}</td>
                     <td className="px-4 py-2">
                       {new Date(o.delivered_at).toLocaleString()}

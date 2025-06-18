@@ -8,7 +8,7 @@ export default function retard() {
   const [orders, setOrders] = useState([]);
   const getDelayClass = (createdAt) => {
     const diffHrs = Math.floor(
-      (Date.now() - new Date(createdAt).getTime()) / 36e5
+      (new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) - new Date(createdAt).getTime()) / 36e5
     );
     return diffHrs >= 2 ? "bg-red-700 text-white" : "";
   };
@@ -55,10 +55,10 @@ export default function retard() {
                 orders.map((order,key) => {
                   const delayClass = getDelayClass(order.created_at);
                   const delayHrs = Math.floor(
-                    (Date.now() - new Date(order.created_at).getTime()) / 36e5
+                    (new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) - new Date(order.created_at).getTime()) / 36e5
                   );
                   const delayMins = new Date(
-                    Date.now() - new Date(order.created_at).getTime()
+                    new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) - new Date(order.created_at).getTime()
                   ).getUTCMinutes();
                   return (
                     <tr

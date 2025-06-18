@@ -27,6 +27,8 @@ module.exports = {
         serial_ids: "$ligne_commande.serial_ids",
         created_at: "$createdAt",
         apn: "$ligne_commande.apn",
+        dpn: "$ligne_commande.dpn",
+        isScuib: "$ligne_commande.isScuib",
         },
       },
       { $sort: { description: -1, createdAt: 1 } },

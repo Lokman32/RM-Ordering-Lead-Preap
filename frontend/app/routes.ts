@@ -7,7 +7,7 @@ export default [
   route('/tube/index', 'routes/tubePages/index.jsx'),
   route('/tube/validate', 'routes/tubePages/confirm.jsx'),
   route('/tube/deliver', 'routes/tubePages/deliver.jsx'),
-  route('/tube/retard', 'routes/tubePages/retard.jsx'),
+  // route('/tube/retard', 'routes/tubePages/retard.jsx'),
 
   // logistics
   route('/logistic/index', 'routes/logistic/index.jsx'),

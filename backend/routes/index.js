@@ -25,6 +25,7 @@ const {
   getCommandDetails,
   supprimerLigneCommande,
   supprimerSerialId,
+  addProduct,
 } = require("../controllers/Admin.controller");
 const { loginPost, logout } = require("../controllers/Auth.controller");
 
@@ -41,6 +42,7 @@ router.get("/api/retardOrders", retarded);
 
 router.post("/api/commandes", storeCommande);
 router.put("/api/rack", updateRack);
+router.post("/api/rack", addProduct);
 router.post("/api/search-rack", searchRack);
 router.post("/api/deliver-products", deliverCommand);
 router.post("/api/validate-products", validateCommands);

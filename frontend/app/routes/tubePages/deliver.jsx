@@ -13,7 +13,7 @@ export default function Confirm() {
   const serialRef = useRef(null);
 
   const getDelayClass = (createdAt) => {
-    const diffHrs = Math.floor((Date.now() - new Date(createdAt).getTime()) / 36e5);
+    const diffHrs = Math.floor((new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) - new Date(createdAt).getTime()) / 36e5);
     return diffHrs >= 2 ? "bg-red-700 text-white" : "";
   };
 
@@ -157,10 +157,10 @@ export default function Confirm() {
                 orders.map((order, i) => {
                   const delayClass = getDelayClass(order.created_at);
                   const delayHrs = Math.floor(
-                    (Date.now() - new Date(order.created_at).getTime()) / 36e5
+                    (new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) - new Date(order.created_at).getTime()) / 36e5
                   );
                   const delayMins = new Date(
-                    Date.now() - new Date(order.created_at).getTime()
+                    new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) - new Date(order.created_at).getTime()
                   ).getUTCMinutes();
                   const rowClass =
                     order.statut === "livred"
@@ -173,7 +173,7 @@ export default function Confirm() {
 
                   return (
                     <tr key={i} className={rowClass}>
-                      <td className="px-4 py-2">{order.apn}</td>
+                      <td className="px-4 py-2">{order.isScuib ? order.apn : order.dpn}</td>
                       <td className="px-4 py-2">{order.quantityCmd}</td>
                       <td className="px-4 py-2">{order.quantityLiv || ""}</td>
                       <td className="px-4 py-2">{order.command_by}</td>

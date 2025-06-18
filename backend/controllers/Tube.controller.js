@@ -26,8 +26,16 @@ module.exports = {
         {
           $lookup: {
             from: "tubes",
-            localField: "ligne_commande.apn",
-            foreignField: "dpn",
+            let: { lookupField: "$ligne_commande.dpn" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: [{ $toUpper: "$dpn" }, { $toUpper: "$$lookupField" }],
+                  },
+                },
+              },
+            ],
             as: "tube_info",
           },
         },
@@ -37,7 +45,9 @@ module.exports = {
           $project: {
             _id: 0,
             serial_cmd: "$serial_cmd",
-            apn: "$tube_info.dpn",
+            apn: "$ligne_commande.apn",
+            dpn: "$ligne_commande.dpn",
+            isScuib: "$ligne_commande.isScuib",
             rack: "$tube_info.rack",
             serial: "$ligne_commande.serial_ids.serial",
             delivered_at: "$ligne_commande.serial_ids.delivered_at",
@@ -66,8 +76,16 @@ module.exports = {
         {
           $lookup: {
             from: "tubes",
-            localField: "ligne_commande.apn",
-            foreignField: "dpn",
+            let: { lookupField: "$ligne_commande.dpn" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: [{ $toUpper: "$dpn" }, { $toUpper: "$$lookupField" }],
+                  },
+                },
+              },
+            ],
             as: "tube_info",
           },
         },
@@ -75,7 +93,8 @@ module.exports = {
         {
           $project: {
             barcode: "$serial_cmd",
-            apn: "$tube_info.dpn",
+            apn: "$ligne_commande.apn",
+            dpn: "$ligne_commande.dpn",
             command_by: "$user_id",
             created_at: "$createdAt",
             quantityCmd: "$ligne_commande.quantite",
@@ -96,6 +115,7 @@ module.exports = {
             statut: "$ligne_commande.status",
             rack: "$tube_info.rack",
             description: "$ligne_commande.description",
+            isScuib: "$ligne_commande.isScuib",
           },
         },
         { $sort: { description: -1, created_at: 1 } },
@@ -106,7 +126,12 @@ module.exports = {
   }),
 
   retarded: asyncHandler(async (req, res) => {
-    const fourHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const fourHoursAgo = new Date(
+      new Date(
+        new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })
+      ) -
+        2 * 60 * 60 * 1000
+    );
 
     const results = await db
       .collection("commandes")
@@ -162,10 +187,12 @@ module.exports = {
   }),
 
   testApn: asyncHandler(async (req, res) => {
-    const { value } = req.query;
+    const { value } = req.query; // uppercase
     if (!value) throw new Error("Value parameter is required");
 
-    const exists = await db.collection("tubes").findOne({ dpn: value });
+    const exists = await db.collection("tubes").findOne({
+      dpn: { $regex: new RegExp(`^${value}$`, "i") },
+    });
 
     res.json({ success: true, exists });
   }),
@@ -177,24 +204,31 @@ module.exports = {
     try {
       const ligne_commande = [];
 
-      for (const { dpn, qte } of payload) {
-        const tube = await db.collection("tubes").findOne({ dpn });
+      for (let { dpn, qte, isScuib, apn } of payload) {
+        console.log(dpn, qte, apn, isScuib);
+        const tube = await db.collection("tubes").findOne({
+          dpn: { $regex: new RegExp(`^${dpn}$`, "i") },
+        });
 
         if (!tube) {
           throw new Error(`Tube with DPN ${dpn} not found`);
         }
 
         ligne_commande.push({
-          apn: dpn,
-          description: tube.description || "", // optional if you have this in the tube doc
+          apn,
+          dpn,
+          description: tube.description || "",
           quantite: qte,
           rack: tube.rack,
           status: "en_attente",
-          serial_ids: [], // start empty
+          serial_ids: [],
+          isScuib,
         });
       }
 
-      const now = new Date();
+      const now = new Date(
+        new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })
+      );
 
       const commandeDoc = {
         serial_cmd,
@@ -230,36 +264,60 @@ module.exports = {
       const [commande] = await db
         .collection("commandes")
         .aggregate([
+          // Unwind the ligne_commande array to process each line individually
+          { $unwind: "$ligne_commande" },
+
+          // Match documents that meet our criteria
           {
-            $project: {
-              ligne_commande: {
-                $filter: {
-                  input: "$ligne_commande",
-                  as: "lc",
-                  cond: {
-                    $and: [
-                      { $eq: ["$$lc.apn", apn] },
-                      {
-                        $not: {
-                          $in: [
-                            "$$lc.status",
-                            ["livred", "confirmed", "cancelled"],
-                          ],
-                        },
+            $match: {
+              $and: [
+                {
+                  $or: [
+                    {
+                      $expr: {
+                        $eq: [
+                          { $toString: "$ligne_commande.apn" },
+                          String(apn),
+                        ],
                       },
+                    },
+                    {
+                      $expr: {
+                        $eq: [
+                          { $toString: "$ligne_commande.dpn" },
+                          String(apn),
+                        ],
+                      },
+                    },
+                  ],
+                },
+                {
+                  "ligne_commande.status": {
+                    $nin: ["livred", "confirmed", "cancelled"],
+                  },
+                },
+                {
+                  $expr: {
+                    $lt: [
+                      { $size: "$ligne_commande.serial_ids" },
+                      "$ligne_commande.quantite",
                     ],
                   },
                 },
-              },
-              _id: 1,
-              status: 1,
+              ],
             },
           },
+
+          // Group back by original commande _id
           {
-            $match: {
-              "ligne_commande.0": { $exists: true },
+            $group: {
+              _id: "$_id",
+              status: { $first: "$status" },
+              ligne_commande: { $push: "$ligne_commande" },
             },
           },
+
+          // Limit to 1 result
           { $limit: 1 },
         ])
         .toArray();
@@ -299,7 +357,20 @@ module.exports = {
       await db.collection("commandes").updateOne(
         {
           _id: new ObjectId(commande._id),
-          "ligne_commande.apn": apn,
+          ligne_commande: {
+            $elemMatch: {
+              $and: [
+                {
+                  $or: [
+                    { apn: parseInt(apn) },
+                    { apn: apn.toString() },
+                    { dpn: apn.toString() },
+                  ],
+                },
+                { status: { $nin: ["livred", "confirmed", "cancelled"] } },
+              ],
+            },
+          },
         },
         {
           $push: {
@@ -307,6 +378,7 @@ module.exports = {
               serial: serial_number,
               status: "livred",
               delivered_at: new Date(),
+              timezone: "Africa/Casablanca",
             },
           },
           $set: {
@@ -314,6 +386,7 @@ module.exports = {
             "ligne_commande.$.status": newLineStatus,
             "ligne_commande.$.estLiv": newQuantityLiv === line.quantite,
             "ligne_commande.$.updated_at": new Date(),
+            updatedAt: new Date(), // Also update the parent document's timestamp
           },
         }
       );
@@ -327,12 +400,19 @@ module.exports = {
       );
 
       if (allLinesDelivered && updated.status !== "livred") {
-        await db
-          .collection("commandes")
-          .updateOne(
-            { _id: new ObjectId(commande._id) },
-            { $set: { status: "livred", updatedAt: new Date() } }
-          );
+        await db.collection("commandes").updateOne(
+          { _id: new ObjectId(commande._id) },
+          {
+            $set: {
+              status: "livred",
+              updatedAt: new Date(
+                new Date().toLocaleString("en-US", {
+                  timeZone: "Africa/Casablanca",
+                })
+              ),
+            },
+          }
+        );
       }
 
       res.json({
@@ -364,19 +444,24 @@ module.exports = {
     }
 
     const commande = await db.collection("commandes").findOne({
-      "ligne_commande.apn": apn,
+      $or: [
+        { "ligne_commande.apn": { $in: [parseInt(apn), apn.toString()] } },
+        { "ligne_commande.dpn": apn.toString() },
+      ],
       "ligne_commande.serial_ids.serial": serial_number,
     });
     if (!commande) {
       return res.status(404).json({
         success: false,
-        message: "No matching commande/line found for that APN and serial",
+        message: "No matching commande for this APN/serial",
       });
     }
 
     const lineIndex = commande.ligne_commande.findIndex(
       (line) =>
-        line.apn === apn &&
+        (line.apn === parseInt(apn) ||
+          line.apn === apn.toString() ||
+          line.dpn === apn.toString()) &&
         line.serial_ids.some((s) => s.serial === serial_number)
     );
     const serialIndex = commande.ligne_commande[lineIndex].serial_ids.findIndex(
@@ -390,7 +475,11 @@ module.exports = {
           [`ligne_commande.${lineIndex}.serial_ids.${serialIndex}.status`]:
             "Confirmed",
           [`ligne_commande.${lineIndex}.serial_ids.${serialIndex}.confirmed_at`]:
-            new Date(),
+            new Date(
+              new Date().toLocaleString("en-US", {
+                timeZone: "Africa/Casablanca",
+              })
+            ),
         },
       }
     );
@@ -411,7 +500,11 @@ module.exports = {
         {
           $set: {
             [`ligne_commande.${lineIndex}.status`]: "confirmed",
-            [`ligne_commande.${lineIndex}.updated_at`]: new Date(),
+            [`ligne_commande.${lineIndex}.updated_at`]: new Date(
+              new Date().toLocaleString("en-US", {
+                timeZone: "Africa/Casablanca",
+              })
+            ),
           },
         }
       );
@@ -425,12 +518,19 @@ module.exports = {
     );
 
     if (allLinesConfirmed && finalState.status !== "confirmed") {
-      await db
-        .collection("commandes")
-        .updateOne(
-          { _id: commande._id },
-          { $set: { status: "confirmed", updatedAt: new Date() } }
-        );
+      await db.collection("commandes").updateOne(
+        { _id: commande._id },
+        {
+          $set: {
+            status: "confirmed",
+            updatedAt: new Date(
+              new Date().toLocaleString("en-US", {
+                timeZone: "Africa/Casablanca",
+              })
+            ),
+          },
+        }
+      );
     }
 
     return res.json({

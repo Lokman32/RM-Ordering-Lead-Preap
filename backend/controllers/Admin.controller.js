@@ -23,7 +23,7 @@ const getShiftBounds = (dateStr, shift) => {
       start = new Date(base);
       start.setHours(22, 0, 0, 0);
       end = new Date(base);
-      end.setDate(end.getDate() + 1); // Move to the next day
+      end.setDate(end.getDate() + 1);
       end.setHours(5, 59, 59, 999);
       break;
   }
@@ -62,7 +62,7 @@ module.exports = {
   }),
 
   updateRack: asyncHandler(async (req, res) => {
-    const { dpn, id, ...updateFields } = req.body;
+    const { dpn, _id, ...updateFields } = req.body;
     delete updateFields._id;
 
     if (!dpn) {
@@ -81,9 +81,9 @@ module.exports = {
 
     const result = await db
       .collection("tubes")
-      .updateOne({ dpn }, { $set: updateFields });
+      .updateOne({ _id: new ObjectId(_id) }, { $set: updateFields });
 
-    console.log(dpn, updateFields)
+    console.log(dpn, updateFields);
     if (result.modifiedCount > 0) {
       return res.json({
         success: true,
@@ -97,6 +97,42 @@ module.exports = {
     }
   }),
 
+  addProduct: asyncHandler(async (req, res) => {
+    const data = req.body;
+    
+    if (!data.unico) {
+      data.unico = undefined
+    }else{
+      [data.unico, data.dpn] = [data.dpn, data.unico];
+    }
+    console.log(data);
+    const existingTube = await db.collection("tubes").findOne({dpn: data.dpn});
+    if (existingTube) {
+      return res.status(200).json({
+        success: false,
+        message: `Tube with DPN ${data.dpn} or APN ${data.apn} already exists`,
+      });
+    }
+    const newTube = {
+      dpn: data.dpn,
+      apn: data.unico,
+      ordre: parseInt(data.order) || 0,
+      packaging: parseInt(data.packaging) || "",
+      unity: data.unity || "",
+      isScuib: data.isScuib || false,
+      type: data.type || "",
+      rack: data.rack || "",
+    };
+    const result = await db.collection("tubes").insertOne(newTube);
+    res.json({
+      success: true,
+      message: "Tube added successfully",
+      data: {
+        _id: result.insertedId,
+        ...newTube,
+      },
+    });
+  }),
 
   historyDetails: asyncHandler(async (req, res) => {
     const { date, shift } = req.query;
@@ -114,6 +150,8 @@ module.exports = {
           $project: {
             serial_cmd: 1,
             apn: "$ligne_commande.apn",
+            dpn: "$ligne_commande.dpn",
+            isScuib: "$ligne_commande.isScuib",
             quantityCmd: "$ligne_commande.quantite",
             quantityLiv: { $size: "$ligne_commande.serial_ids" },
             commanded_at: "$createdAt",
@@ -193,6 +231,8 @@ module.exports = {
           $project: {
             serial_cmd: 1,
             apn: "$ligne_commande.apn",
+            dpn: "$ligne_commande.dpn",
+            isScuib: "$ligne_commande.isScuib",
             quantityCmd: "$ligne_commande.quantite",
             quantityLiv: { $size: "$ligne_commande.serial_ids" },
             commanded_at: "$createdAt",
@@ -236,50 +276,86 @@ module.exports = {
 
   getCommandDetails: asyncHandler(async (req, res) => {
     const { serial_cmd, apn } = req.query;
+
     if (!serial_cmd || !apn) {
-      return res
-        .json({ serial_cmd, apn });
+      return res.status(400).json({
+        success: false,
+        message: "Both serial_cmd and apn parameters are required",
+      });
     }
 
     const commandDetails = await db
       .collection("commandes")
       .aggregate([
-        { $match: { serial_cmd, "ligne_commande.apn": apn } },
+        {
+          $match: {
+            serial_cmd: serial_cmd,
+          },
+        },
         { $unwind: "$ligne_commande" },
         {
+          $match: {
+            $or: [{ "ligne_commande.apn": apn }, { "ligne_commande.dpn": apn }],
+          },
+        },
+        {
           $project: {
+            _id: 0,
+            command_id: "$_id",
             serial_cmd: 1,
             apn: "$ligne_commande.apn",
+            dpn: "$ligne_commande.dpn",
+            isScuib: "$ligne_commande.isScuib",
             quantityCmd: "$ligne_commande.quantite",
             quantityLiv: { $size: "$ligne_commande.serial_ids" },
+            remaining: {
+              $subtract: [
+                "$ligne_commande.quantite",
+                { $size: "$ligne_commande.serial_ids" },
+              ],
+            },
             commanded_at: "$createdAt",
+            updated_at: "$updatedAt",
             serial_ids: "$ligne_commande.serial_ids",
             last_delivered: {
               $max: "$ligne_commande.serial_ids.delivered_at",
             },
             status: "$ligne_commande.status",
+            rack: "$ligne_commande.rack",
+            description: "$ligne_commande.description",
           },
         },
+        { $limit: 1 },
       ])
       .toArray();
 
     if (commandDetails.length === 0) {
-      return res.json({ message: "No command details found" });
+      return res.status(404).json({
+        success: false,
+        message: "No matching command line found",
+      });
     }
 
-    res.json({ success: true, data: commandDetails[0] });
+    res.json({
+      success: true,
+      data: commandDetails[0],
+    });
   }),
 
   supprimerLigneCommande: asyncHandler(async (req, res) => {
     const { serial_cmd, apn } = req.params;
     if (!serial_cmd || !apn) {
-      return res.status(400).json({ message: "serial_cmd and apn are required" });
+      return res
+        .status(400)
+        .json({ message: "serial_cmd and apn are required" });
     }
 
-    const result = await db.collection("commandes").updateOne(
-      { serial_cmd, "ligne_commande.apn": apn },
-      { $pull: { ligne_commande: { apn } } }
-    );
+    const result = await db
+      .collection("commandes")
+      .updateOne(
+        { serial_cmd, "ligne_commande.apn": apn },
+        { $pull: { ligne_commande: { apn } } }
+      );
 
     if (result.modifiedCount === 0) {
       return res.json({ message: "No matching command found" });
@@ -289,28 +365,31 @@ module.exports = {
   }),
 
   supprimerSerialId: asyncHandler(async (req, res) => {
-  const { serial_cmd, apn, serial_id } = req.params;
-  if (!serial_cmd || !apn || !serial_id) {
-    return res.status(400).json({ message: "serial_cmd, apn and serial_id are required" });
-  }
-
-  const result = await db.collection("commandes").updateOne(
-    {
-      serial_cmd,
-      "ligne_commande.apn": apn
-    },
-    {
-      $pull: {
-        "ligne_commande.$.serial_ids": { serial: serial_id }
-      }
+    const { serial_cmd, apn, serial_id } = req.params;
+    if (!serial_cmd || !apn || !serial_id) {
+      return res
+        .status(400)
+        .json({ message: "serial_cmd, apn and serial_id are required" });
     }
-  );
 
-  if (result.modifiedCount === 0) {
-    return res.json({ message: "No matching command found or serial not removed" });
-  }
+    const result = await db.collection("commandes").updateOne(
+      {
+        serial_cmd,
+        "ligne_commande.apn": apn,
+      },
+      {
+        $pull: {
+          "ligne_commande.$.serial_ids": { serial: serial_id },
+        },
+      }
+    );
 
-  res.json({ success: true, message: "Serial ID deleted successfully" });
-}),
+    if (result.modifiedCount === 0) {
+      return res.json({
+        message: "No matching command found or serial not removed",
+      });
+    }
 
+    res.json({ success: true, message: "Serial ID deleted successfully" });
+  }),
 };

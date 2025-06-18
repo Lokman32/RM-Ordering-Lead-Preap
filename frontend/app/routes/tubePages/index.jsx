@@ -19,7 +19,7 @@ export default function index() {
     }
 
     const decoded = jwtDecode(token);
-    const currentTime = Date.now() / 1000;
+    const currentTime = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) / 1000;
 
     if (decoded.exp < currentTime) {
       localStorage.removeItem('token');
@@ -62,9 +62,19 @@ export default function index() {
       const data = await res.json();
       if (!data.exists) return;
 
+      let qte = null
+      let apn = null
+      let isScuib = false
+
+      if (data.exists.isScuib) {
+        qte = data.exists.ordre / data.exists.packaging
+        isScuib = true
+        apn = data.exists.apn
+      }
+
       setRows((prev) => [
         ...prev,
-        { dpn: value, quantity: null, id: keyCounter },
+        { dpn: value, quantity: qte, id: keyCounter, isScuib, apn },
       ]);
       setKeyCounter((k) => k + 1);
     } catch (err) {
@@ -84,7 +94,10 @@ export default function index() {
 
   const handleOrder = async () => {
     if (rows.length === 0) { return }
-    const payload = rows.map(({ dpn, quantity }) => ({ dpn, qte: quantity }));
+    const payload = rows.map(({ dpn, quantity, isScuib, apn }) => {
+      if (isScuib) return { dpn, isScuib, apn, qte: quantity }
+      return { dpn, qte: quantity }
+    });
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/commandes`, {
         method: "POST",
@@ -133,9 +146,9 @@ export default function index() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {rows.map(({ dpn, quantity, id }) => (
+                {rows.map(({ dpn, quantity, id, isScuib, apn }) => (
                   <tr key={id}>
-                    <td className="px-4 py-3 text-3xl">{dpn}</td>
+                    <td className="px-4 py-3 text-3xl">{isScuib ? apn : dpn}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {[...Array(8)].map((_, i) => {
@@ -146,7 +159,7 @@ export default function index() {
                               key={val}
                               onClick={(e) => {
                                 e.preventDefault();
-                                setQuantity(id, val);
+                                if (!isScuib) setQuantity(id, val);
                               }}
                               className={`px-4 py-1 text-xl rounded hover:bg-gray-300 ${selected
                                 ? "border-2 border-indigo-500"

@@ -14,7 +14,7 @@ export default function AdminPage({ children }) {
     }
 
     const decoded = jwtDecode(token);
-    const currentTime = Date.now() / 1000;
+    const currentTime = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Casablanca" })) / 1000;
 
     if (decoded.exp < currentTime) {
       localStorage.removeItem('token');
@@ -31,7 +31,7 @@ export default function AdminPage({ children }) {
         <Link
           to="/admin/rack"
           className={`p-3 uppercase hover:text-amber-400 ${location.pathname === '/admin/rack' ? 'bg-amber-400 text-black hover:text-black' : ''}`}>
-          rack
+          Raw Materials
         </Link>
         <Link
           to="/admin/dashboard"

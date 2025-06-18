@@ -200,7 +200,7 @@ export default function HistoryDashboard() {
             <table className="mt-6 min-w-full bg-white shadow">
               <thead>
                 <tr>
-                  {['Commande', 'APN', 'Qté Cmd', 'Qté Liv', 'Date Cmd', 'Statut', 'Supprimer']
+                  {['Unico', 'APN', 'Qté Cmd', 'Qté Liv', 'Date Cmd', 'Statut']
                     .map(h => <th key={h} className="px-4 py-2"> {h} </th>)}
                 </tr>
               </thead>
@@ -208,26 +208,27 @@ export default function HistoryDashboard() {
                 {details.length ? details.map((d, i) => (
                   <tr
                     key={i}
-                    className="border-b"
+                    className={`${d.isScuib && "bg-amber-900/15"}`}
                     onClick={(e) => {
                       if (e.target.tagName === 'BUTTON') return;
-                      handleRowClick(d.serial_cmd, d.apn)
+                      const apn = d.dpn
+                      handleRowClick(d.serial_cmd, apn)
                     }}
                   >
-                    <td className="px-4 py-2">{d.serial_cmd}</td>
-                    <td className="px-4 py-2">{d.apn}</td>
+                    <td className="px-4 py-2">{d.isScuib && d.dpn}</td>
+                    <td className="px-4 py-2">{d.isScuib ? d.apn : d.dpn}</td>
                     <td className="px-4 py-2">{d.quantityCmd}</td>
                     <td className="px-4 py-2">{d.quantityLiv}</td>
                     <td className="px-4 py-2">
                       {new Date(d.commanded_at).toLocaleString()}
                     </td>
                     <td className="px-4 py-2">{d.status}</td>
-                    <td className="px-4 py-2 text-center">
+                    {/* <td className="px-4 py-2 text-center">
                       <button
                         className='bg-red-500 px-4 py-2 rounded cursor-pointer'
                         onClick={()=>deleteLigneCommande(d.serial_cmd,d.apn)}
                       >Supprimer</button>
-                    </td>
+                    </td> */}
                   </tr>
                 )) : (
                   <tr>
@@ -247,7 +248,7 @@ export default function HistoryDashboard() {
               onClick={() => setSelectedRow(null)}
               aria-label="Close details modal"
             />
-            <div className="bg-white z-50 rounded-lg shadow-lg  max-w-7xl p-6 relative">
+            <div className="bg-white z-50 rounded-lg shadow-lg min-w-5xl max-w-7xl p-6 relative">
               <button
                 onClick={() => {
                   setSelectedRow(null);
@@ -269,8 +270,14 @@ export default function HistoryDashboard() {
                     <tbody>
                       <tr>
                         <th className="text-left px-4 py-2">APN</th>
-                        <td className="px-4 py-2">{detailsRow.apn}</td>
+                        <td className="px-4 py-2">{detailsRow.isScuib ? detailsRow.apn : detailsRow.dpn}</td>
                       </tr>
+                      {detailsRow?.isScuib && (
+                        <tr>
+                          <th className="text-left px-4 py-2">Unico</th>
+                          <td className="px-4 py-2">{detailsRow.dpn}</td>
+                        </tr>
+                      )}
                       <tr>
                         <th className="text-left px-4 py-2">Qté Commandée</th>
                         <td className="px-4 py-2">{detailsRow.quantityCmd}</td>
@@ -298,7 +305,7 @@ export default function HistoryDashboard() {
                                   <th className="px-2 py-1 border">Statut</th>
                                   <th className="px-2 py-1 border">Date Livraison</th>
                                   <th className="px-2 py-1 border">Date Confirmation</th>
-                                  <th className="px-2 py-1 border">Supprimer</th>
+                                  {/* <th className="px-2 py-1 border">Supprimer</th> */}
                                 </tr>
                               </thead>
                               <tbody>
@@ -307,12 +314,12 @@ export default function HistoryDashboard() {
                                     <td className="px-2 py-1 border">{s.serial}</td>
                                     <td className="px-2 py-1 border">{s.status}</td>
                                     <td className="px-2 py-1 text-center border">{s.delivered_at ? new Date(s.delivered_at).toLocaleString() : '-'}</td>
-                                    <td className="px-2 py-1 text-center border">{s.confirmed_at ? new Date(s.delivered_at).toLocaleString() : '-'}</td>
+                                    <td className="px-2 py-1 text-center border">{s.confirmed_at ? new Date(s.confirmed_at).toLocaleString() : '-'}</td>
                                     <td className='px-2 py-1 border'>
-                                      <button
+                                      {/* <button
                                         className='bg-red-500 px-4 py-2 rounded cursor-pointer'
                                         onClick={()=>deleteSerialId(detailsRow.serial_cmd,detailsRow.apn,s.serial)}
-                                      >Supprimer</button>
+                                      >Supprimer</button> */}
                                     </td>
                                   </tr>
                                 ))}
