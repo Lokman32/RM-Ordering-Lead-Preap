@@ -216,7 +216,7 @@ export default function HistoryDashboard() {
                     }}
                   >
                     <td className="px-4 py-2">{d.isScuib && d.dpn}</td>
-                    <td className="px-4 py-2">{d.isScuib ? d.apn : d.dpn}</td>
+                    <td className="px-4 py-2">{(typeof d.isScuib === 'undefined')?d.apn:(d.isScuib ? d.apn : d.dpn)}</td>
                     <td className="px-4 py-2">{d.quantityCmd}</td>
                     <td className="px-4 py-2">{d.quantityLiv}</td>
                     <td className="px-4 py-2">

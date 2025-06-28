@@ -353,8 +353,8 @@ module.exports = {
     const result = await db
       .collection("commandes")
       .updateOne(
-        { serial_cmd, "ligne_commande.apn": apn },
-        { $pull: { ligne_commande: { apn } } }
+        { serial_cmd },
+        { $pull: { ligne_commande: { dpn: apn } } }
       );
 
     if (result.modifiedCount === 0) {

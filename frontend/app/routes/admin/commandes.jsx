@@ -87,7 +87,7 @@ export default function CommandesManager() {
       );
 
       if (res.ok) {
-        setCommandes(commandes.filter(d => d.serial_cmd !== serial_cmd || d.apn !== apn));
+        setCommandes(commandes.filter(d => d.serial_cmd !== serial_cmd || d.dpn !== apn));
       } else {
         console.error('Failed to delete ligne commande');
       }
@@ -172,19 +172,20 @@ export default function CommandesManager() {
                       className={`hover:bg-gray-100 cursor-pointer ${delayClass}`}
                     >
                       <td className="px-4 py-3 pl-8">{commande.serial_cmd}</td>
-                      <td className="px-4 py-3">{commande.isScuib ? commande.apn : commande.dpn}</td>
+                      <td className="px-4 py-3">
+                        {(typeof commande.isScuib === 'undefined')?commande.apn:(commande.isScuib ? commande.apn : commande.dpn)}</td>
                       <td className="px-4 py-3">{commande.commanded_at}</td>
                       <td className="px-4 py-2 text-nowrap">
                         {delayHrs} h : {delayMins} min
                       </td>
                       <td className="px-4 py-3">{commande.status}</td>
-                      <td className="px-4 py-3">
-                        <td className="px-4 py-2 text-center">
-                          <button
-                            className='bg-red-500 px-4 py-2 rounded cursor-pointer'
-                            onClick={() => deleteLigneCommande(commande.serial_cmd, commande.apn)}
-                          >Delete</button>
-                        </td>
+                      <td className="px-4 py-2 text-center">
+                        <button
+                          className='bg-red-500 px-4 py-2 rounded cursor-pointer'
+                          onClick={() => {
+                            deleteLigneCommande(commande.serial_cmd, commande.dpn)
+                          }}
+                        >Delete</button>
                       </td>
                     </tr>
                   )
