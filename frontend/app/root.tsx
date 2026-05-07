@@ -186,7 +186,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               duration: 8000,
               style: {
                 border: "1px solid #713200",
-                width: "500px",
+                width: "800px",
                 padding: "30px",
                 fontSize: "22px",
                 color: "#ffffff",

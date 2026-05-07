@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import TubePage from "../../layouts/tubePage";
 import { useNavigate } from "react-router";
 import { jwtDecode } from "jwt-decode";
+import toast from 'react-hot-toast';
 
 export default function index() {
   const inputRef = useRef(null);
@@ -94,6 +95,17 @@ export default function index() {
 
   const handleOrder = async () => {
     if (rows.length === 0) { return }
+    const isRowValid = (row) => {
+      if (!row.quantity || row.quantity < 1) return false;
+      return true;
+    };
+    const allRowsValid = rows.every(isRowValid);
+
+    if (!allRowsValid) {
+      console.warn("Invalid rows detected – request aborted");
+      toast.error("Il faut definir la Quantite pour tout les champs!");
+      return;
+    }
     const payload = rows.map(({ dpn, quantity, isScuib, apn }) => {
       if (isScuib) return { dpn, isScuib, apn, qte: quantity }
       return { dpn, qte: quantity }
@@ -106,7 +118,7 @@ export default function index() {
         credentials: 'include'
       });
       const json = await res.json();
-      console.log("Server response:", command_by);
+      toast.success("Commande envoyée vers Logistics Departement")
       setRows([]);
       setKeyCounter(0);
     } catch (err) {
